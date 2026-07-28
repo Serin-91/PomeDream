@@ -658,11 +658,12 @@ body.show-orientation-hint #orientation-hint {
 
 #result-char-img {
   display: block;
-  width: min(280px, 78%);
-  max-height: 190px;
+  width: auto;
+  max-width: min(240px, 74%);
+  max-height: 150px;
   height: auto;
   object-fit: contain;
-  margin: -6px auto 4px;
+  margin: -8px auto 2px;
   animation: pop-in 0.5s ease both;
 }
 

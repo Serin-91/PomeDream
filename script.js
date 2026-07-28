@@ -72,8 +72,8 @@ const SPRITES = {
   run: "images/캐릭터_Run.png",
   jump: "images/캐릭터_Jump.png",
   hurt: "images/캐릭터_Hurt.png",
-  win: "images/result-win.png",
-  gameover: "images/result-gameover.png",
+  win: "images/result-win-card.png",
+  gameover: "images/result-gameover-card.png",
 };
 
 Object.values(SPRITES).forEach((src) => {
