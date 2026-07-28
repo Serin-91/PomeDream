@@ -166,6 +166,7 @@ function updateScrollSpeedForPhase() {
 let soundOn = true;
 let audioCtx = null;
 let bgmTimeoutId = null;
+let audioUnlockPromise = null;
 
 function ensureAudio() {
   try {
@@ -185,6 +186,26 @@ function ensureAudio() {
     console.warn("Audio initialization skipped.", err);
     return false;
   }
+}
+
+async function unlockAudio() {
+  if (!ensureAudio() || !audioCtx) return false;
+  if (audioCtx.state !== "suspended") return audioCtx.state === "running";
+
+  if (!audioUnlockPromise) {
+    audioUnlockPromise = audioCtx
+      .resume()
+      .catch((err) => {
+        console.warn("Audio resume skipped.", err);
+        return false;
+      })
+      .finally(() => {
+        audioUnlockPromise = null;
+      });
+  }
+
+  await audioUnlockPromise;
+  return audioCtx && audioCtx.state === "running";
 }
 
 function playTone(freq, startTime, duration, type, peakVolume) {
@@ -454,8 +475,19 @@ function resizeGameToViewport() {
   const scale = isPortrait
     ? Math.min(window.innerWidth / GAME_VIEW_HEIGHT, window.innerHeight / GAME_VIEW_WIDTH, 1)
     : Math.min(window.innerWidth / GAME_VIEW_WIDTH, window.innerHeight / GAME_VIEW_HEIGHT, 1);
-  gameShellEl.style.transform = isPortrait ? `rotate(90deg) scale(${scale})` : `scale(${scale})`;
+  gameShellEl.style.width = `${(isPortrait ? GAME_VIEW_HEIGHT : GAME_VIEW_WIDTH) * scale}px`;
+  gameShellEl.style.height = `${(isPortrait ? GAME_VIEW_WIDTH : GAME_VIEW_HEIGHT) * scale}px`;
+  gameContainerEl.style.transform = isPortrait
+    ? `translateX(${GAME_VIEW_HEIGHT * scale}px) rotate(90deg) scale(${scale})`
+    : `scale(${scale})`;
   document.body.classList.toggle("show-orientation-hint", isPortrait);
+}
+
+function queueResizeGameToViewport() {
+  resizeGameToViewport();
+  [80, 220, 500].forEach((delay) => {
+    setTimeout(resizeGameToViewport, delay);
+  });
 }
 
 function getCharBaseBottomPx() {
@@ -998,20 +1030,20 @@ function showWinSparkles(finished) {
 }
 
 // ===== 시작 버튼 =====
-btnStart.addEventListener("click", () => {
+btnStart.addEventListener("click", async () => {
   if (gameState === "countdown" || gameState === "playing") return;
-  ensureAudio();
+  await unlockAudio();
   playStartChime();
   resetGameData();
   startCountdown();
 });
 
 // ===== 다시 시작 버튼 (중복 클릭 방지) =====
-btnRestart.addEventListener("click", () => {
+btnRestart.addEventListener("click", async () => {
   if (gameState === "countdown" || gameState === "playing") return;
 
   btnRestart.disabled = true;
-  ensureAudio();
+  await unlockAudio();
   playStartChime();
   clearAllTimers();
   resetGameData();
@@ -1039,19 +1071,33 @@ gameContainerEl.addEventListener("pointerdown", handleScreenJumpInput, { passive
 gameContainerEl.addEventListener("touchstart", handleScreenJumpInput, { passive: false });
 gameContainerEl.addEventListener("click", handleScreenJumpInput);
 
-window.addEventListener("resize", resizeGameToViewport);
-window.addEventListener("orientationchange", resizeGameToViewport);
+["pointerdown", "touchstart", "click"].forEach((eventName) => {
+  document.addEventListener(
+    eventName,
+    () => {
+      unlockAudio();
+    },
+    { capture: true, passive: true }
+  );
+});
+
+window.addEventListener("resize", queueResizeGameToViewport);
+window.addEventListener("orientationchange", queueResizeGameToViewport);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", queueResizeGameToViewport);
+  window.visualViewport.addEventListener("scroll", queueResizeGameToViewport);
+}
 
 // ===== 사운드 버튼 (배경음/효과음 전체 on-off) =====
-document.getElementById("btn-sound-ready").addEventListener("click", () => {
-  ensureAudio();
+document.getElementById("btn-sound-ready").addEventListener("click", async () => {
+  await unlockAudio();
   setSoundOn(!soundOn);
 });
-document.getElementById("btn-sound-playing").addEventListener("click", () => {
-  ensureAudio();
+document.getElementById("btn-sound-playing").addEventListener("click", async () => {
+  await unlockAudio();
   setSoundOn(!soundOn);
 });
 
 // 초기 화면
-resizeGameToViewport();
+queueResizeGameToViewport();
 showScreen("ready");

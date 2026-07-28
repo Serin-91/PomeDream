@@ -28,17 +28,18 @@ body {
   position: relative;
   width: 960px;
   height: 540px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform-origin: center center;
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 #game-container {
-  position: relative;
+  position: absolute;
+  left: 0;
+  top: 0;
   width: 960px;
   height: 540px;
   flex: 0 0 auto;
+  transform-origin: top left;
   overflow: hidden;
   border-radius: 24px;
   background: linear-gradient(180deg, #cdb4f0 0%, #f6c9e0 50%, #ffe3ef 100%);
