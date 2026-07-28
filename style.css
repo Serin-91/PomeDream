@@ -54,20 +54,22 @@ body {
 #orientation-hint {
   position: fixed;
   left: 50%;
-  bottom: 14px;
+  top: 12px;
   transform: translateX(-50%);
   display: none;
-  min-width: 180px;
-  padding: 5px 12px;
+  width: min(92vw, 390px);
+  padding: 9px 14px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.86);
-  color: #5c3a7a;
+  background: rgba(255, 255, 255, 0.94);
+  color: #7b3fb2;
   font-family: "Jua", sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   letter-spacing: 0;
   text-align: center;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.18);
+  border: 2px solid rgba(255, 167, 211, 0.95);
+  box-shadow: 0 5px 16px rgba(78, 35, 120, 0.28);
   pointer-events: none;
+  z-index: 20;
 }
 
 body.show-orientation-hint #orientation-hint {

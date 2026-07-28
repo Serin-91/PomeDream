@@ -472,6 +472,7 @@ function getGroundBottomPx() {
 
 function resizeGameToViewport() {
   const isPortrait = window.innerWidth < window.innerHeight;
+  const isLikelyMobile = window.innerWidth <= 900 || window.matchMedia("(pointer: coarse)").matches;
   const scale = isPortrait
     ? Math.min(window.innerWidth / GAME_VIEW_HEIGHT, window.innerHeight / GAME_VIEW_WIDTH, 1)
     : Math.min(window.innerWidth / GAME_VIEW_WIDTH, window.innerHeight / GAME_VIEW_HEIGHT, 1);
@@ -480,7 +481,7 @@ function resizeGameToViewport() {
   gameContainerEl.style.transform = isPortrait
     ? `translateX(${GAME_VIEW_HEIGHT * scale}px) rotate(90deg) scale(${scale})`
     : `scale(${scale})`;
-  document.body.classList.toggle("show-orientation-hint", isPortrait);
+  document.body.classList.toggle("show-orientation-hint", isLikelyMobile);
 }
 
 function queueResizeGameToViewport() {
