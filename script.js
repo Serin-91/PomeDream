@@ -50,6 +50,7 @@ const resultFinishedEl = document.getElementById("result-finished");
 const resultGradeEl = document.getElementById("result-grade");
 
 const gameShellEl = document.getElementById("game-shell");
+const gameContainerEl = document.getElementById("game-container");
 const stageEl = document.getElementById("stage");
 const characterEl = document.getElementById("character");
 const characterVisualEl = document.getElementById("character-visual");
@@ -449,9 +450,12 @@ function getGroundBottomPx() {
 }
 
 function resizeGameToViewport() {
-  const scale = Math.min(window.innerWidth / GAME_VIEW_WIDTH, window.innerHeight / GAME_VIEW_HEIGHT, 1);
-  gameShellEl.style.transform = `scale(${scale})`;
-  document.body.classList.toggle("show-orientation-hint", window.innerWidth < window.innerHeight);
+  const isPortrait = window.innerWidth < window.innerHeight;
+  const scale = isPortrait
+    ? Math.min(window.innerWidth / GAME_VIEW_HEIGHT, window.innerHeight / GAME_VIEW_WIDTH, 1)
+    : Math.min(window.innerWidth / GAME_VIEW_WIDTH, window.innerHeight / GAME_VIEW_HEIGHT, 1);
+  gameShellEl.style.transform = isPortrait ? `rotate(90deg) scale(${scale})` : `scale(${scale})`;
+  document.body.classList.toggle("show-orientation-hint", isPortrait);
 }
 
 function getCharBaseBottomPx() {
@@ -1022,16 +1026,18 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
-stageEl.addEventListener(
-  "pointerdown",
-  (e) => {
-    if (gameState !== "playing") return;
-    if (e.target.closest("button")) return;
+function handleScreenJumpInput(e) {
+  if (gameState !== "playing") return;
+  if (e.target.closest("button")) return;
+  if (typeof e.preventDefault === "function") {
     e.preventDefault();
-    jump();
-  },
-  { passive: false }
-);
+  }
+  jump();
+}
+
+gameContainerEl.addEventListener("pointerdown", handleScreenJumpInput, { passive: false });
+gameContainerEl.addEventListener("touchstart", handleScreenJumpInput, { passive: false });
+gameContainerEl.addEventListener("click", handleScreenJumpInput);
 
 window.addEventListener("resize", resizeGameToViewport);
 window.addEventListener("orientationchange", resizeGameToViewport);

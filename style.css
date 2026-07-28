@@ -51,9 +51,9 @@ body {
 }
 
 #orientation-hint {
-  position: absolute;
+  position: fixed;
   left: 50%;
-  bottom: -34px;
+  bottom: 14px;
   transform: translateX(-50%);
   display: none;
   min-width: 180px;
