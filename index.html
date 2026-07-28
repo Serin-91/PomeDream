@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>포메의 꿈속 간식 대소동</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gamja+Flower&family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-container">
+
+  <!-- 시작 화면 -->
+  <section id="screen-ready" class="screen">
+    <div class="sky-deco">
+      <div class="deco-moon">🌙</div>
+      <div class="deco-star s1">✦</div>
+      <div class="deco-star s2">✦</div>
+      <div class="deco-star s3">✧</div>
+      <div class="deco-star s4">✦</div>
+      <div class="deco-rainbow">🌈</div>
+    </div>
+
+    <div class="ready-card">
+      <div class="title-wrap">
+        <h1 class="title">포메의 꿈속 간식 대소동</h1>
+        <img class="title-dog" src="images/캐릭터_Idle.png" alt="포메">
+      </div>
+      <p class="subtitle">꿈속 구름 나라를 달리며 간식을 모으는<br>귀여운 단판 자동 횡스크롤 러너 게임</p>
+
+      <div class="howto">
+        <h2>🎮 조작법</h2>
+        <div class="howto-row">
+          <span class="key">Space</span> <span class="key-or">또는</span> <span class="key">↑</span>
+          <span class="howto-desc">점프!</span>
+        </div>
+        <div class="score-guide" aria-label="점수 제도">
+          <div><span>⭐ 별</span><strong class="score-plus">+10점</strong></div>
+          <div><span>🍖 황금뼈다귀</span><strong class="score-plus">+25점</strong></div>
+          <div><span>❤️ 생명력 잃을 시</span><strong class="score-minus">-80점</strong></div>
+        </div>
+        <p class="howto-sub">45초 동안 살아남으세요! 🍖✨</p>
+      </div>
+
+      <button id="btn-start" class="btn btn-primary">게임 시작 ▶</button>
+      <button id="btn-sound-ready" class="btn btn-round" aria-label="사운드 켜기/끄기">🔊</button>
+    </div>
+  </section>
+
+  <!-- 카운트다운 오버레이 -->
+  <section id="screen-countdown" class="screen hidden">
+    <div id="countdown-number">3</div>
+  </section>
+
+  <!-- 게임 화면 -->
+  <section id="screen-playing" class="screen hidden">
+    <div id="hud">
+      <div class="hud-card">⭐ <span id="hud-score">0</span></div>
+      <div class="hud-card"><span class="golden-icon">🍖</span> <span id="hud-treats">0</span></div>
+      <div class="hud-card">❤️ <span id="hud-hearts">3</span></div>
+      <div class="hud-card">⏱️ <span id="hud-time">45</span></div>
+      <button id="btn-sound-playing" class="btn btn-round hud-sound" aria-label="사운드 켜기/끄기">🔊</button>
+    </div>
+
+    <div id="stage">
+      <div id="bg-scroll">
+        <div class="bg-tile" id="bg-tile-1"></div>
+        <div class="bg-tile bg-tile-mirror" id="bg-tile-2"></div>
+        <div class="bg-tile" id="bg-tile-3"></div>
+      </div>
+      <div id="platforms"></div>
+      <div id="hazards"></div>
+      <div id="items"></div>
+      <div id="score-popups"></div>
+      <div id="character"><img id="character-visual" src="images/캐릭터_Run.png" alt="포메"></div>
+      <div id="phase-announce"></div>
+    </div>
+  </section>
+
+  <!-- 결과 화면 -->
+  <section id="screen-gameover" class="screen hidden">
+    <div class="sky-deco">
+      <div class="deco-star s1">✦</div>
+      <div class="deco-star s2">✧</div>
+      <div class="deco-star s3">✦</div>
+    </div>
+
+    <div class="result-card">
+      <div id="win-sparkles"></div>
+      <img id="result-char-img" src="images/캐릭터_Win.png" alt="결과">
+      <h2 id="result-title">완주 성공!</h2>
+
+      <div class="result-grade-badge">
+        <span id="result-grade">-</span>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-item">
+          <div class="result-icon">⭐</div>
+          <div class="result-label">최종 점수</div>
+          <div class="result-value"><span id="result-score">0</span>점</div>
+        </div>
+        <div class="result-item">
+          <div class="result-icon golden-icon">🍖</div>
+          <div class="result-label">황금뼈다귀</div>
+          <div class="result-value"><span id="result-treats">0</span>개</div>
+        </div>
+        <div class="result-item">
+          <div class="result-icon">❤️</div>
+          <div class="result-label">남은 하트</div>
+          <div class="result-value"><span id="result-hearts">0</span>개</div>
+        </div>
+        <div class="result-item">
+          <div class="result-icon">🏁</div>
+          <div class="result-label">완주 여부</div>
+          <div class="result-value" id="result-finished">-</div>
+        </div>
+      </div>
+
+      <button id="btn-restart" class="btn btn-primary">다시 시작 ▶</button>
+    </div>
+  </section>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
