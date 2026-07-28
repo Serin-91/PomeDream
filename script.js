@@ -401,6 +401,7 @@ function setSoundOn(value) {
 function showScreen(name) {
   Object.values(screens).forEach((el) => el.classList.add("hidden"));
   screens[name].classList.remove("hidden");
+  updateMobileHint();
 }
 
 function updateHud() {
@@ -472,7 +473,6 @@ function getGroundBottomPx() {
 
 function resizeGameToViewport() {
   const isPortrait = window.innerWidth < window.innerHeight;
-  const isLikelyMobile = window.innerWidth <= 900 || window.matchMedia("(pointer: coarse)").matches;
   const scale = isPortrait
     ? Math.min(window.innerWidth / GAME_VIEW_HEIGHT, window.innerHeight / GAME_VIEW_WIDTH, 1)
     : Math.min(window.innerWidth / GAME_VIEW_WIDTH, window.innerHeight / GAME_VIEW_HEIGHT, 1);
@@ -481,7 +481,14 @@ function resizeGameToViewport() {
   gameContainerEl.style.transform = isPortrait
     ? `translateX(${GAME_VIEW_HEIGHT * scale}px) rotate(90deg) scale(${scale})`
     : `scale(${scale})`;
-  document.body.classList.toggle("show-orientation-hint", isLikelyMobile);
+  updateMobileHint();
+}
+
+function updateMobileHint() {
+  const hintEl = document.getElementById("orientation-hint");
+  const isLikelyMobile = window.innerWidth <= 900 || window.matchMedia("(pointer: coarse)").matches;
+  hintEl.textContent = "가로 화면, 무음모드 제거를 권장합니다";
+  document.body.classList.toggle("show-orientation-hint", isLikelyMobile && gameState === "ready");
 }
 
 function queueResizeGameToViewport() {
