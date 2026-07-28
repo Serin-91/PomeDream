@@ -657,10 +657,13 @@ body.show-orientation-hint #orientation-hint {
 }
 
 #result-char-img {
-  width: 130px;
+  display: block;
+  width: min(280px, 78%);
+  max-height: 190px;
   height: auto;
-  margin-bottom: 4px;
-  animation: pop-in 0.5s ease;
+  object-fit: contain;
+  margin: -6px auto 4px;
+  animation: pop-in 0.5s ease both;
 }
 
 @keyframes pop-in {

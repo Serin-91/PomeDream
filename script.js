@@ -76,6 +76,11 @@ const SPRITES = {
   gameover: "images/캐릭터_Gameover.png",
 };
 
+Object.values(SPRITES).forEach((src) => {
+  const img = new Image();
+  img.src = src;
+});
+
 // ===== 횡스크롤 =====
 let SCROLL_SPEED = 300; // px/s, 시간 구간에 따라 매 프레임 갱신되는 실제 속도 (초기값 = 0~15초 구간 값)
 const PLATFORM_WIDTH = 240;
