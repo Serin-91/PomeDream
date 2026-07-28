@@ -1,4 +1,4 @@
-// ===== 게임 상태 =====
+﻿// ===== 게임 상태 =====
 // ready -> countdown -> playing -> gameOver -> (재시작) -> countdown -> ...
 let gameState = "ready";
 
@@ -49,6 +49,7 @@ const resultHeartsEl = document.getElementById("result-hearts");
 const resultFinishedEl = document.getElementById("result-finished");
 const resultGradeEl = document.getElementById("result-grade");
 
+const gameShellEl = document.getElementById("game-shell");
 const stageEl = document.getElementById("stage");
 const characterEl = document.getElementById("character");
 const characterVisualEl = document.getElementById("character-visual");
@@ -62,13 +63,16 @@ const scorePopupsEl = document.getElementById("score-popups");
 const resultCharImgEl = document.getElementById("result-char-img");
 const phaseAnnounceEl = document.getElementById("phase-announce");
 
+const GAME_VIEW_WIDTH = 960;
+const GAME_VIEW_HEIGHT = 540;
+
 const SPRITES = {
   idle: "images/캐릭터_Idle.png",
   run: "images/캐릭터_Run.png",
   jump: "images/캐릭터_Jump.png",
   hurt: "images/캐릭터_Hurt.png",
   win: "images/캐릭터_Win.png",
-  gameover: "images/캐틱터_Gameover.png",
+  gameover: "images/캐릭터_Gameover.png",
 };
 
 // ===== 횡스크롤 =====
@@ -163,12 +167,22 @@ let audioCtx = null;
 let bgmTimeoutId = null;
 
 function ensureAudio() {
-  if (!audioCtx) {
+  try {
     const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new AudioCtxClass();
-  }
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume();
+    if (!AudioCtxClass) return false;
+    if (!audioCtx) {
+      audioCtx = new AudioCtxClass();
+    }
+    if (audioCtx.state === "suspended") {
+      const resumePromise = audioCtx.resume();
+      if (resumePromise && typeof resumePromise.catch === "function") {
+        resumePromise.catch(() => {});
+      }
+    }
+    return true;
+  } catch (err) {
+    console.warn("Audio initialization skipped.", err);
+    return false;
   }
 }
 
@@ -226,7 +240,7 @@ function playNoiseBurst(startTime, duration, volume, filterFreq) {
 
 function playJumpSound() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   playTone(500, t, 0.1, "triangle", 0.14);
   playTone(760, t + 0.05, 0.12, "triangle", 0.12);
@@ -234,7 +248,7 @@ function playJumpSound() {
 
 function playStarSound() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   playTone(880, t, 0.1, "sine", 0.18);
   playTone(1320, t + 0.07, 0.14, "sine", 0.16);
@@ -242,7 +256,7 @@ function playStarSound() {
 
 function playGoldenSound() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   // 화려한 상승 아르페지오
   [784, 988, 1175, 1568, 1976].forEach((f, i) => playTone(f, t + i * 0.055, 0.22, "triangle", 0.2));
@@ -252,7 +266,7 @@ function playGoldenSound() {
 
 function playHurtSound() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   playTone(220, t, 0.16, "sawtooth", 0.15);
   playTone(140, t + 0.08, 0.2, "sawtooth", 0.13);
@@ -260,14 +274,14 @@ function playHurtSound() {
 
 function playFallSound() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   playSweep(520, 130, t, 0.35, "sine", 0.16);
 }
 
 function playWinSound() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
 
   // 화성이 실린 팡파레 (삼화음 상승 진행, 마지막이 클라이맥스)
@@ -294,14 +308,14 @@ function playWinSound() {
 
 function playGameOverSound() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   [400, 320, 240, 180].forEach((f, i) => playTone(f, t + i * 0.15, 0.32, "sawtooth", 0.14));
 }
 
 function playStartChime() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   playTone(660, t, 0.12, "sine", 0.15);
   playTone(990, t + 0.1, 0.18, "sine", 0.15);
@@ -309,14 +323,14 @@ function playStartChime() {
 
 function playCountdownTick() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   playTone(440, t, 0.12, "square", 0.12);
 }
 
 function playCountdownGo() {
   if (!soundOn) return;
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   playTone(660, t, 0.1, "square", 0.14);
   playTone(880, t + 0.09, 0.28, "triangle", 0.18);
@@ -331,7 +345,7 @@ function scheduleBgmStep(i) {
     bgmTimeoutId = null;
     return;
   }
-  ensureAudio();
+  if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   playTone(BGM_PAD_NOTES[i % BGM_PAD_NOTES.length], t, 1.1, "sine", 0.045);
   playTone(BGM_SPARKLE_NOTES[i % BGM_SPARKLE_NOTES.length], t + 0.06, 0.4, "triangle", 0.032);
@@ -422,8 +436,22 @@ function clearAllTimers() {
 
 const GROUND_Y_SHIFT_DOWN = 60; // 오브젝트들이 위쪽에 몰려 보여서 전체적으로 60px 아래로 이동
 
+function getStageWidth() {
+  return stageEl.clientWidth || GAME_VIEW_WIDTH;
+}
+
+function getStageHeight() {
+  return stageEl.clientHeight || GAME_VIEW_HEIGHT;
+}
+
 function getGroundBottomPx() {
-  return stageEl.getBoundingClientRect().height * GROUND_RATIO - GROUND_Y_SHIFT_DOWN;
+  return getStageHeight() * GROUND_RATIO - GROUND_Y_SHIFT_DOWN;
+}
+
+function resizeGameToViewport() {
+  const scale = Math.min(window.innerWidth / GAME_VIEW_WIDTH, window.innerHeight / GAME_VIEW_HEIGHT, 1);
+  gameShellEl.style.transform = `scale(${scale})`;
+  document.body.classList.toggle("show-orientation-hint", window.innerWidth < window.innerHeight);
 }
 
 function getCharBaseBottomPx() {
@@ -498,7 +526,7 @@ function initPlatforms() {
   tilesSinceGap = 0;
   consecutiveGapCount = 0;
   lastTileHadHazard = false;
-  const stageWidth = stageEl.getBoundingClientRect().width;
+  const stageWidth = getStageWidth();
   const charCenterX = stageWidth * 0.25;
   let x = 0;
   while (x < stageWidth + PLATFORM_WIDTH) {
@@ -511,7 +539,7 @@ function initPlatforms() {
 }
 
 function updatePlatforms(dt) {
-  const stageWidth = stageEl.getBoundingClientRect().width;
+  const stageWidth = getStageWidth();
 
   platforms.forEach((p) => {
     p.x -= SCROLL_SPEED * dt;
@@ -604,7 +632,7 @@ function updateItems(dt) {
   const groundY = getGroundBottomPx();
   const itemBottom = groundY + ITEM_HEIGHT_ABOVE_GROUND;
 
-  const stageWidth = stageEl.getBoundingClientRect().width;
+  const stageWidth = getStageWidth();
   const charCenterX = stageWidth * 0.25;
   const charLeft = charCenterX - CHAR_HITBOX_WIDTH / 2;
   const charRight = charCenterX + CHAR_HITBOX_WIDTH / 2;
@@ -702,7 +730,7 @@ function checkGapFall() {
   if (gameState !== "playing" || isInvincible) return;
   if (jumpOffset > 4) return; // 점프 중이면(공중에 충분히 떠 있으면) 검사하지 않음
 
-  const stageWidth = stageEl.getBoundingClientRect().width;
+  const stageWidth = getStageWidth();
   const charCenterX = stageWidth * 0.25;
 
   if (!hasPlatformUnderX(charCenterX)) {
@@ -713,7 +741,7 @@ function checkGapFall() {
 function updateHazards(dt) {
   const groundY = getGroundBottomPx();
 
-  const stageWidth = stageEl.getBoundingClientRect().width;
+  const stageWidth = getStageWidth();
   const charCenterX = stageWidth * 0.25;
   const hazardHitboxMargin = (HAZARD_SIZE - HAZARD_HITBOX_SIZE) / 2;
   const charHitboxMargin = 6; // 캐릭터 쪽도 살짝 안쪽으로 좁혀서 그레이징 판정 방지
@@ -749,7 +777,7 @@ function updateHazards(dt) {
 
 // ----- 배경 이미지 스크롤 (두 장을 이어붙여 무한 반복) -----
 function updateBgScroll(dt) {
-  const stageWidth = stageEl.getBoundingClientRect().width;
+  const stageWidth = getStageWidth();
   const bgLoopWidth = stageWidth * 2;
 
   bgOffset -= SCROLL_SPEED * 0.35 * dt; // 배경은 근경보다 느리게 (패럴랙스), 속도 배율은 SCROLL_SPEED를 따라감
@@ -874,7 +902,7 @@ function loseHeart() {
   if (gameState !== "playing") return;
   hearts -= 1;
   score = Math.max(0, score - HEART_PENALTY);
-  const stageWidth = stageEl.getBoundingClientRect().width;
+  const stageWidth = getStageWidth();
   showScorePopup(HEART_PENALTY, "minus", stageWidth * 0.25, getCharBaseBottomPx() - 18);
   updateHud();
   if (hearts <= 0) {
@@ -994,6 +1022,20 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+stageEl.addEventListener(
+  "pointerdown",
+  (e) => {
+    if (gameState !== "playing") return;
+    if (e.target.closest("button")) return;
+    e.preventDefault();
+    jump();
+  },
+  { passive: false }
+);
+
+window.addEventListener("resize", resizeGameToViewport);
+window.addEventListener("orientationchange", resizeGameToViewport);
+
 // ===== 사운드 버튼 (배경음/효과음 전체 on-off) =====
 document.getElementById("btn-sound-ready").addEventListener("click", () => {
   ensureAudio();
@@ -1005,4 +1047,5 @@ document.getElementById("btn-sound-playing").addEventListener("click", () => {
 });
 
 // 초기 화면
+resizeGameToViewport();
 showScreen("ready");
