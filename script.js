@@ -3,12 +3,11 @@
 let gameState = "ready";
 
 const GAME_DURATION = 45;
-
 let score = 0;
 let goldenCount = 0; // 황금 뼈다귀 획득 개수
-let hearts = 3;
 let timeLeft = GAME_DURATION;
 let finished = false;
+let isFalling = false; // 낙사 추락 상태
 let phase15Shown = false;
 let phase30Shown = false;
 
@@ -42,12 +41,10 @@ const countdownNumberEl = document.getElementById("countdown-number");
 
 const hudScoreEl = document.getElementById("hud-score");
 const hudGoldenEl = document.getElementById("hud-treats");
-const hudHeartsEl = document.getElementById("hud-hearts");
 const hudTimeEl = document.getElementById("hud-time");
 
 const resultScoreEl = document.getElementById("result-score");
 const resultGoldenEl = document.getElementById("result-treats");
-const resultHeartsEl = document.getElementById("result-hearts");
 const resultFinishedEl = document.getElementById("result-finished");
 const resultGradeEl = document.getElementById("result-grade");
 
@@ -78,9 +75,14 @@ const SPRITES = {
   gameover: "images/result-gameover-card.png",
 };
 
+const loadedImages = {};
 Object.values(SPRITES).forEach((src) => {
   const img = new Image();
   img.src = src;
+  if ("decode" in img) {
+    img.decode().catch(() => {});
+  }
+  loadedImages[src] = img;
 });
 
 // ===== 횡스크롤 =====
@@ -88,18 +90,18 @@ let SCROLL_SPEED = 300; // px/s, 시간 구간에 따라 매 프레임 갱신되
 const PLATFORM_WIDTH = 240;
 
 // 구름 틈: 있을 때도, 없을 때도 있도록 확률로 결정.
-const GAP_CHANCE_EARLY = 0.65; // 0~15초 (상향)
-const GAP_CHANCE_MID = 0.78;  // 15~30초 (상향)
-const GAP_CHANCE_LATE = 0.88; // 30~45초 (상향)
+const GAP_CHANCE_EARLY = 0.70; // 0~15초 (추가 상향)
+const GAP_CHANCE_MID = 0.84;  // 15~30초 (추가 상향)
+const GAP_CHANCE_LATE = 0.95; // 30~45초 (추가 상향)
 const GAP_WIDTH = 115;         // 구름 하나 너비 수준 (단일 틈도 도전적)
 const DOUBLE_GAP_WIDTH = 200;  // 구름 두 개 너비 수준 (이단점프필요)
 const MIN_TILES_BETWEEN_GAPS = 1; // 틈 사이 최소 발판 1개
 const MAX_CONSECUTIVE_GAPS = 2;   // 최대 연속 틈 2개
 
 // 이중 틈 등장 확률 (구간별)
-const DOUBLE_GAP_CHANCE_EARLY = 0.25;  // 0~15초: 25% 확률
-const DOUBLE_GAP_CHANCE_MID = 0.38;   // 15~30초: 38% 확률
-const DOUBLE_GAP_CHANCE_LATE = 0.52;  // 30~45초: 52% 확률
+const DOUBLE_GAP_CHANCE_EARLY = 0.30;  // 0~15초
+const DOUBLE_GAP_CHANCE_MID = 0.45;   // 15~30초
+const DOUBLE_GAP_CHANCE_LATE = 0.60;  // 30~45초
 
 let platforms = []; // { el, x, width }
 let tilesSinceGap = 0;
@@ -113,8 +115,8 @@ const ITEM_HEIGHT_ABOVE_GROUND = 130;
 const ITEM_SCORE = 10;
 const GOLDEN_SIZE = 46;
 const GOLDEN_SCORE = 25;
-const HEART_PENALTY = 80;
-const GUARANTEED_GOLDEN_SPAWN_TIMES = [6, 14, 22, 31, 39];
+const HAZARD_SCORE_PENALTY = 50; // 먹구름 피격 시 점수 감점 (-50점)
+const GUARANTEED_GOLDEN_SPAWN_TIMES = [8, 17, 26, 34, 41]; // 확정 등장 5개 (약 8~9초 간격)
 const CHAR_HITBOX_WIDTH = 55;
 const CHAR_HITBOX_HEIGHT = 58;
 const CHAR_GROUND_OFFSET = 26;
@@ -132,12 +134,38 @@ let hazards = []; // { el, x }
 let isInvincible = false;
 let invincibleTimeoutId = null;
 
+// ===== 작은 별 (점프 궤적) =====
+// ★ 생성 확률 조정 위치: MINI_STAR_SPAWN_CHANCE
+const MINI_STAR_SPAWN_CHANCE = 0.18;  // 발판 1개당 작은별 곡선 생성 확률 (0.0~1.0)
+const MINI_STAR_SCORE = 1;            // 작은 별 1개당 점수
+const MINI_STAR_SIZE = 26;            // 작은 별 크기(px, 일반 별 44px 대비 축소하여 통일)
+const MINI_STAR_MAX_COUNT = 5;        // 곡선당 최대 별 개수
+
+let miniStars = []; // { el, x, bottomPx, arcId, collected }
+let nextArcId = 0;
+let arcTrackers = {}; // { [arcId]: { total, collected, bonusAwarded } }
+
+// ===== 초콜릿 장애물 (2단계 및 3단계 전용) =====
+// ★ 생성 확률 조정 위치: CHOCOLATE_SPAWN_RATE_STAGE_2, CHOCOLATE_SPAWN_RATE_STAGE_3
+const CHOCOLATE_SPAWN_RATE_STAGE_2 = 0.15; // 2단계 (15~30초) 초콜릿 생성 확률 (15%)
+const CHOCOLATE_SPAWN_RATE_STAGE_3 = 0.32; // 3단계 (30~45초) 초콜릿 생성 확률 (32%)
+const CHOCOLATE_SCORE_PENALTY = 20;   // 초콜릿 충돌 시 점수 감소
+const CHOCOLATE_SIZE = 32;            // 초콜릿 충돌 판정 크기(px)
+const CHOCOLATE_FLY_SPEED_ADD = 180;  // 초콜릿 비행 추가 속도(px/s)
+// 다채로운 4가지 비행 높이 (낮음 68px, 중간 112px, 높음 156px, 초고공 198px)
+const CHOCOLATE_HEIGHTS = [68, 112, 156, 198];
+
+let chocolates = []; // { el, x, baseHeight, isWave, wavePhase, hit }
+let lastChocolateSpawnTileIndex = -2; // 초콜릿 쿨다운: 마지막 생성 타일 인덱스
+let totalTileSpawnCount = 0;          // 발판 총 생성 수 (쿨다운 추적)
+
 // ===== 등장 확률 (시간 구간별) =====
-const SAFE_START_SECONDS = 2; // 초반 무적 안전 구간 2초로 단축
+// ★ 황금 뼈다귀 무작위 등장 확률 적정화 (8% ~ 12%)
+const SAFE_START_SECONDS = 2; // 초반 무적 안전 구간 2초
 const SPAWN_PHASES = [
-  { untilElapsed: 15, hazard: 0.22, item: 0.58, golden: 0.1 },   // 위험물 상향
-  { untilElapsed: 30, hazard: 0.32, item: 0.52, golden: 0.14 },  // 위험물 상향
-  { untilElapsed: GAME_DURATION, hazard: 0.42, item: 0.46, golden: 0.18 }, // 위험물 대폭 상향
+  { untilElapsed: 15, hazard: 0.32, item: 0.54, golden: 0.08 },  // 1단계 (8%)
+  { untilElapsed: 30, hazard: 0.42, item: 0.46, golden: 0.10 },  // 2단계 (10%)
+  { untilElapsed: GAME_DURATION, hazard: 0.52, item: 0.40, golden: 0.12 }, // 3단계 (12%)
 ];
 
 function getSpawnRates() {
@@ -155,9 +183,9 @@ function getGapChance(elapsed) {
   return GAP_CHANCE_LATE;
 }
 
-const SCROLL_SPEED_EARLY = 320;  // 초반 속도 상향
-const SCROLL_SPEED_MID = 365;    // 중반 속도 상향
-const SCROLL_SPEED_LATE = 415;   // 후반 속도 대폭 상향
+const SCROLL_SPEED_EARLY = 350;  // 1단계 속도
+const SCROLL_SPEED_MID = 410;    // 2단계 속도
+const SCROLL_SPEED_LATE = 500;   // 3단계 속도 (500으로 상향)
 
 function getDoubleGapChance(elapsed) {
   if (elapsed < 15) return DOUBLE_GAP_CHANCE_EARLY;
@@ -209,6 +237,18 @@ async function unlockAudio() {
   if (!audioUnlockPromise) {
     audioUnlockPromise = audioCtx
       .resume()
+      .then(() => {
+        // 첫 웜업용 무음 오디오 즉시 발사하여 브라우저 사운드 하드웨어를 깨움
+        try {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          gain.gain.value = 0.00001;
+          osc.connect(gain).connect(audioCtx.destination);
+          osc.start(0);
+          osc.stop(0.001);
+        } catch (e) {}
+        return true;
+      })
       .catch((err) => {
         console.warn("Audio resume skipped.", err);
         return false;
@@ -298,12 +338,38 @@ function playStarSound() {
   playTone(1320, t + 0.07, 0.14, "sine", 0.16);
 }
 
+function playMiniStarSound() {
+  if (!soundOn) return;
+  if (!ensureAudio()) return;
+  const t = audioCtx.currentTime;
+  playTone(1200, t, 0.07, "sine", 0.1);
+  playTone(1600, t + 0.04, 0.06, "sine", 0.08);
+}
+
+function playChocolateHitSound() {
+  if (!soundOn) return;
+  if (!ensureAudio()) return;
+  const t = audioCtx.currentTime;
+  playSweep(300, 180, t, 0.18, "sawtooth", 0.12);
+  playTone(160, t + 0.12, 0.14, "square", 0.08);
+}
+
 function playGoldenSound() {
   if (!soundOn) return;
   if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
   [784, 988, 1175, 1568, 1976].forEach((f, i) => playTone(f, t + i * 0.055, 0.22, "triangle", 0.2));
   [1568, 1976, 2349].forEach((f, i) => playTone(f, t + 0.26 + i * 0.05, 0.32, "sine", 0.12));
+}
+
+function playComboSound() {
+  if (!soundOn || !ensureAudio()) return;
+  const t = audioCtx.currentTime;
+  // 신나고 또렷한 콤보 팡파르 3연음 (E5 -> G5 -> C6 -> E6 축하음)
+  playTone(659.25, t, 0.12, "triangle", 0.22);
+  playTone(783.99, t + 0.08, 0.12, "triangle", 0.24);
+  playTone(1046.50, t + 0.16, 0.28, "sine", 0.28);
+  playTone(1318.51, t + 0.24, 0.35, "triangle", 0.25);
 }
 
 function playHurtSound() {
@@ -353,11 +419,12 @@ function playGameOverSound() {
 }
 
 function playStartChime() {
-  if (!soundOn) return;
-  if (!ensureAudio()) return;
+  if (!soundOn) return 0;
+  if (!ensureAudio()) return 0;
   const t = audioCtx.currentTime;
   playTone(660, t, 0.12, "sine", 0.15);
   playTone(990, t + 0.1, 0.18, "sine", 0.15);
+  return t; // 발수 오디오 시각(t) 반환하여 카운트다운 사운드 정박자 기준점으로 사용
 }
 
 function playCountdownTick() {
@@ -425,7 +492,6 @@ function showScreen(name) {
 function updateHud() {
   hudScoreEl.textContent = score;
   hudGoldenEl.textContent = goldenCount;
-  hudHeartsEl.textContent = hearts;
   hudTimeEl.textContent = timeLeft;
 }
 
@@ -433,9 +499,11 @@ function resetGameData() {
   score = 0;
   goldenCount = 0;
   guaranteedGoldenSpawnIndex = 0;
-  hearts = 3;
   timeLeft = GAME_DURATION;
   finished = false;
+  isFalling = false;
+  nextArcId = 0;
+  arcTrackers = {};
   phase15Shown = false;
   phase30Shown = false;
   phaseAnnounceEl.classList.remove("show");
@@ -518,13 +586,15 @@ function getCharBaseBottomPx() {
 }
 
 function resetCharacterPhysics() {
-  velocityY = 0;
   jumpOffset = 0;
+  velocityY = 0;
   isOnGround = true;
   jumpCount = 0;
+  isFalling = false;
   lastPhysicsTime = null;
   characterEl.classList.remove("airborne");
   characterEl.classList.remove("invincible");
+  characterEl.classList.remove("falling");
   characterEl.style.bottom = `${getCharBaseBottomPx()}px`;
   characterVisualEl.src = SPRITES.run;
 
@@ -561,22 +631,79 @@ function spawnPlatformAt(xStart, opts) {
     return;
   }
 
-  const rates = getSpawnRates();
-  const hazardChance = opts.suppressHazard ? 0 : rates.hazard;
-  const shouldSpawnGuaranteedGolden = isGuaranteedGoldenDue();
-  const roll = Math.random();
-  if (shouldSpawnGuaranteedGolden) {
-    spawnItemAt(xStart + PLATFORM_WIDTH / 2 - GOLDEN_SIZE / 2, 1);
-    guaranteedGoldenSpawnIndex += 1;
-    lastTileHadHazard = false;
-  } else if (roll < hazardChance) {
-    spawnHazardAt(xStart + PLATFORM_WIDTH / 2 - HAZARD_SIZE / 2);
-    lastTileHadHazard = true;
-  } else if (roll < hazardChance + rates.item) {
-    spawnItemAt(xStart + PLATFORM_WIDTH / 2 - ITEM_SIZE / 2, rates.golden);
-    lastTileHadHazard = false;
-  } else {
-    lastTileHadHazard = false;
+  totalTileSpawnCount += 1;
+  const elapsed = GAME_DURATION - timeLeft;
+  const isPhase3 = elapsed >= 30;
+
+  // 현재 단계에 따른 초콜릿 스폰 확률 선택 (1단계: 0, 2단계: 15%, 3단계: 30%)
+  let chocoSpawnRate = 0;
+  if (isPhase3) {
+    chocoSpawnRate = CHOCOLATE_SPAWN_RATE_STAGE_3;
+  } else if (elapsed >= 15) {
+    chocoSpawnRate = CHOCOLATE_SPAWN_RATE_STAGE_2;
+  }
+
+  // --- 2단계 & 3단계: 초콜릿 우선 판단 ---
+  // 초콜릿이 생성되면 이 발판엔 지상 장애물도, 틈도 생성하지 않음
+  let chocolateSpawnedThisTile = false;
+  if (chocoSpawnRate > 0 && !opts.suppressHazard && !opts.suppressChocolate) {
+    const cooldownOk = (totalTileSpawnCount - lastChocolateSpawnTileIndex) >= 2;
+    if (cooldownOk && Math.random() < chocoSpawnRate) {
+      // 1. 4가지 높이 중 랜덤 선택 (2단계: 3가지, 3단계: 4가지 높이)
+      const randomHeightIndex = Math.floor(Math.random() * (isPhase3 ? 4 : 3));
+      const firstHeight = CHOCOLATE_HEIGHTS[randomHeightIndex];
+      const isWave1 = Math.random() < 0.22; // 22% 확률로 둥실거리는 S자 물결 초콜릿
+      spawnChocolate(getStageWidth() + 60, firstHeight, isWave1);
+
+      // 2. 3단계에서는 60% 확률로 '높이가 서로 다른 변칙 콤보' 2연속 초콜릿 날아옴!
+      if (isPhase3 && Math.random() < 0.60) {
+        let secondHeightIndex = Math.floor(Math.random() * 4);
+        if (secondHeightIndex === randomHeightIndex) {
+          secondHeightIndex = (randomHeightIndex + 1 + Math.floor(Math.random() * 3)) % 4; // 다른 높이 강제
+        }
+        const secondHeight = CHOCOLATE_HEIGHTS[secondHeightIndex];
+        const isWave2 = Math.random() < 0.22;
+        // X축 간격도 160px ~ 270px 사이의 변칙 무작위 간격
+        const gapOffset = 160 + Math.random() * 110;
+        spawnChocolate(getStageWidth() + 60 + gapOffset, secondHeight, isWave2);
+      }
+
+      lastChocolateSpawnTileIndex = totalTileSpawnCount;
+      chocolateSpawnedThisTile = true;
+      lastTileHadHazard = true; // 틈 생성 억제에도 활용
+    }
+  }
+
+  // --- 작은 별 곡선 생성 여부 사전 결정 ---
+  const canSpawnMiniStars = !opts.suppressHazard && Math.random() < MINI_STAR_SPAWN_CHANCE;
+
+  // --- 지상 아이템/장애물 (초콜릿 생성 시에는 스킵) ---
+  if (!chocolateSpawnedThisTile) {
+    const rates = getSpawnRates();
+    const hazardChance = opts.suppressHazard ? 0 : rates.hazard;
+    const shouldSpawnGuaranteedGolden = isGuaranteedGoldenDue();
+    const roll = Math.random();
+    if (shouldSpawnGuaranteedGolden) {
+      spawnItemAt(xStart + PLATFORM_WIDTH / 2 - GOLDEN_SIZE / 2, 1);
+      guaranteedGoldenSpawnIndex += 1;
+      lastTileHadHazard = false;
+    } else if (roll < hazardChance) {
+      spawnHazardAt(xStart + PLATFORM_WIDTH / 2 - HAZARD_SIZE / 2);
+      lastTileHadHazard = true;
+    } else if (roll < hazardChance + rates.item) {
+      // ★ 일반 별과 작은 별 중복 생성 방지: 작은 별 곡선이 생기는 발판이면 일반 별 생성 스킵!
+      if (!canSpawnMiniStars) {
+        spawnItemAt(xStart + PLATFORM_WIDTH / 2 - ITEM_SIZE / 2, rates.golden);
+      }
+      lastTileHadHazard = false;
+    } else {
+      lastTileHadHazard = false;
+    }
+  }
+
+  // --- 작은 별 궤적: 사전 결정된 경우 이 발판 위 공간에 생성 ---
+  if (canSpawnMiniStars) {
+    spawnMiniStarArc(xStart, PLATFORM_WIDTH);
   }
 }
 
@@ -612,11 +739,14 @@ function updatePlatforms(dt) {
   const rightEdge = last ? last.x + last.width : 0;
   if (rightEdge < stageWidth) {
     const elapsed = GAME_DURATION - timeLeft;
-    const spacingOk = tilesSinceGap >= MIN_TILES_BETWEEN_GAPS;
+    // 0~30초: 연속 구름 1~2개 섞임, 30초 이후: 구름 무조건 1개씩 징검다리
+    const maxConsecutiveTiles = elapsed >= 30 ? 1 : 2;
+    const maxConsecutiveGaps = elapsed >= 30 ? 1 : MAX_CONSECUTIVE_GAPS;
+    const forceGap = tilesSinceGap >= maxConsecutiveTiles;
     const canGap =
-      elapsed >= SAFE_START_SECONDS && spacingOk && !lastTileHadHazard && consecutiveGapCount < MAX_CONSECUTIVE_GAPS;
+      elapsed >= SAFE_START_SECONDS && tilesSinceGap >= 1 && !lastTileHadHazard && consecutiveGapCount < maxConsecutiveGaps;
 
-    if (canGap && Math.random() < getGapChance(elapsed)) {
+    if (canGap && (forceGap || Math.random() < getGapChance(elapsed))) {
       tilesSinceGap = 0;
       consecutiveGapCount += 1;
       // 이중 틈 vs 단일 틈 확률적 선택
@@ -625,12 +755,212 @@ function updatePlatforms(dt) {
       spawnPlatformAt(rightEdge + chosenGap, { suppressHazard: true });
     } else {
       tilesSinceGap += 1;
-      if (spacingOk) {
-        consecutiveGapCount = 0;
-      }
+      consecutiveGapCount = 0;
       spawnPlatformAt(rightEdge);
     }
   }
+}
+
+// ----- 작은 별 (점프 궤적) -----
+function spawnMiniStarArc(tileX, tileWidth) {
+  const groundY = getGroundBottomPx();
+  // 항상 5~7개 스폰 → 모두 콤보 대상
+  const count = 5 + Math.floor(Math.random() * 3);
+  const currentArcId = ++nextArcId;
+
+  arcTrackers[currentArcId] = {
+    total: count,
+    collected: 0,
+    bonusAwarded: false
+  };
+
+  const PATTERNS = [
+    "jump_rainbow",    // 1단 점프 무지개 (80px ~ 140px)
+    "double_jump_arc", // 2단 점프 고공  (90px ~ 185px)
+    "air_rising",      // 공중 우상향    (80px ~ 175px)
+    "air_falling",     // 공중 우하향    (175px ~ 80px)
+    "air_wave",        // 둥실 물결      (85px ~ 155px)
+  ];
+  const chosenPattern = PATTERNS[Math.floor(Math.random() * PATTERNS.length)];
+
+  const startOffsetPct = 0.02;
+  const widthPct = 0.96;
+  const arcWidth = tileWidth * widthPct;
+  const startX = tileX + tileWidth * startOffsetPct;
+
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0.5 : i / (count - 1);
+    const xPos = startX + arcWidth * t;
+
+    let heightAboveGround = 0;
+    if (chosenPattern === "jump_rainbow") {
+      heightAboveGround = 80 + Math.sin(t * Math.PI) * 60;  // 80px ~ 140px
+    } else if (chosenPattern === "double_jump_arc") {
+      heightAboveGround = 90 + Math.sin(t * Math.PI) * 95;  // 90px ~ 185px
+    } else if (chosenPattern === "air_rising") {
+      heightAboveGround = 80 + Math.sin(t * 0.5 * Math.PI) * 95; // 80px ~ 175px
+    } else if (chosenPattern === "air_falling") {
+      heightAboveGround = 80 + Math.cos(t * 0.5 * Math.PI) * 95; // 175px ~ 80px
+    } else if (chosenPattern === "air_wave") {
+      heightAboveGround = 85 + Math.sin(t * Math.PI) * 70;  // 85px ~ 155px
+    }
+
+    const bottomPx = groundY + heightAboveGround;
+
+    const el = document.createElement("div");
+    el.className = "mini-star";
+    el.textContent = "⭐";
+    el.style.left = `${xPos}px`;
+    el.style.bottom = `${bottomPx}px`;
+    el.style.animationDelay = `${i * 0.07}s`;
+    itemsEl.appendChild(el);
+    miniStars.push({ el, x: xPos, bottomPx, arcId: currentArcId, collected: false });
+  }
+}
+
+function clearMiniStars() {
+  miniStars.forEach((s) => s.el.remove());
+  miniStars = [];
+}
+
+function updateMiniStars(dt) {
+  const groundY = getGroundBottomPx();
+  const stageWidth = getStageWidth();
+  const charCenterX = stageWidth * 0.25;
+  const charLeft = charCenterX - CHAR_HITBOX_WIDTH / 2;
+  const charRight = charCenterX + CHAR_HITBOX_WIDTH / 2;
+  const charBottom = groundY + CHAR_GROUND_OFFSET + jumpOffset;
+  const charTop = charBottom + CHAR_HITBOX_HEIGHT;
+
+  miniStars.forEach((s) => {
+    if (s.collected) return;
+
+    s.x -= SCROLL_SPEED * dt;
+    s.el.style.left = `${s.x}px`;
+    // bottomPx는 고정 (발판 기준 포물선 높이)
+    s.el.style.bottom = `${s.bottomPx}px`;
+
+    const sLeft = s.x;
+    const sRight = s.x + MINI_STAR_SIZE;
+    const sBottom = s.bottomPx;
+    const sTop = s.bottomPx + MINI_STAR_SIZE;
+
+    const overlap =
+      charLeft < sRight &&
+      charRight > sLeft &&
+      charBottom < sTop &&
+      charTop > sBottom;
+
+    if (overlap) {
+      s.collected = true;
+      s.el.classList.add("collected");
+      setTimeout(() => s.el.remove(), 200);
+      score += MINI_STAR_SCORE;
+      showScorePopup(MINI_STAR_SCORE, "plus", s.x + MINI_STAR_SIZE / 2, s.bottomPx + MINI_STAR_SIZE + 4);
+
+      // 5개 이상 한 번에 모두 먹은 콤보(Combo!) 달성 시
+      if (s.arcId > 0) {
+        const tracker = arcTrackers[s.arcId];
+        if (tracker && !tracker.bonusAwarded) {
+          tracker.collected += 1;
+          if (tracker.collected >= tracker.total) {
+            tracker.bonusAwarded = true;
+            const BONUS_SCORE = 5;
+            score += BONUS_SCORE;
+            showComboPopup(s.x + MINI_STAR_SIZE / 2, s.bottomPx + MINI_STAR_SIZE + 28);
+            playComboSound(); // 신나는 콤보 전용 팡파르 효과음!
+          }
+        }
+      }
+
+      updateHud();
+      playMiniStarSound();
+    }
+  });
+
+  miniStars = miniStars.filter((s) => {
+    if (!s.collected && s.x + MINI_STAR_SIZE < 0) {
+      s.el.remove();
+      return false;
+    }
+    return !s.collected || s.el.isConnected;
+  });
+}
+
+// ----- 초콜릿 장애물 (2단계 및 3단계 전용) -----
+function spawnChocolate(xStart, heightPx, isWave = false) {
+  const groundY = getGroundBottomPx();
+  const el = document.createElement("div");
+  el.className = "chocolate";
+  el.textContent = "🍫";
+  el.style.left = `${xStart}px`;
+  el.style.bottom = `${groundY + heightPx}px`;
+  hazardsEl.appendChild(el);
+  chocolates.push({
+    el,
+    x: xStart,
+    baseHeight: heightPx,
+    isWave,
+    wavePhase: Math.random() * Math.PI * 2,
+    hit: false
+  });
+}
+
+function clearChocolates() {
+  chocolates.forEach((c) => c.el.remove());
+  chocolates = [];
+}
+
+function updateChocolates(dt) {
+  const groundY = getGroundBottomPx();
+  const stageWidth = getStageWidth();
+  const charCenterX = stageWidth * 0.25;
+  const charHitboxMargin = 6;
+  const charLeft = charCenterX - CHAR_HITBOX_WIDTH / 2 + charHitboxMargin;
+  const charRight = charCenterX + CHAR_HITBOX_WIDTH / 2 - charHitboxMargin;
+  const charBottom = groundY + CHAR_GROUND_OFFSET + jumpOffset;
+  const charTop = charBottom + CHAR_HITBOX_HEIGHT;
+
+  chocolates.forEach((c) => {
+    if (c.hit) return;
+    c.x -= (SCROLL_SPEED + CHOCOLATE_FLY_SPEED_ADD) * dt;
+    c.el.style.left = `${c.x}px`;
+
+    // S자 물결 비행인 경우 둥실거리는 Y축 이동 추가
+    let currentHeight = c.baseHeight;
+    if (c.isWave) {
+      c.wavePhase += dt * 4.8;
+      currentHeight += Math.sin(c.wavePhase) * 18;
+    }
+
+    const cBottom = groundY + currentHeight;
+    c.el.style.bottom = `${cBottom}px`;
+
+    const cLeft = c.x;
+    const cRight = c.x + CHOCOLATE_SIZE;
+    const cTop = cBottom + CHOCOLATE_SIZE;
+
+    const overlapX = charLeft < cRight && charRight > cLeft;
+    const overlapY = charBottom < cTop && charTop > cBottom;
+
+    if (overlapX && overlapY) {
+      c.hit = true;
+      c.el.remove();
+      score = Math.max(0, score - CHOCOLATE_SCORE_PENALTY);
+      showScorePopup(CHOCOLATE_SCORE_PENALTY, "minus", charCenterX, getCharBaseBottomPx() - 18);
+      updateHud();
+      playChocolateHitSound();
+    }
+  });
+
+  chocolates = chocolates.filter((c) => {
+    if (c.hit) return false;
+    if (c.x + CHOCOLATE_SIZE < 0) {
+      c.el.remove();
+      return false;
+    }
+    return true;
+  });
 }
 
 function hasPlatformUnderX(x) {
@@ -753,10 +1083,43 @@ function spawnHazardAt(xStart) {
   hazards.push({ el, x: xStart });
 }
 
-function applyDamage() {
-  loseHeart();
-  if (gameState !== "playing") return;
 
+
+function showScorePopup(amount, type, x, y) {
+  const el = document.createElement("div");
+  el.className = `score-popup ${type}`;
+  el.textContent = `${type === "minus" ? "-" : "+"}${amount}`;
+  el.style.left = `${x}px`;
+  el.style.bottom = `${y}px`;
+  scorePopupsEl.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+function showComboPopup(x, y) {
+  const el = document.createElement("div");
+  el.className = "score-popup combo";
+  el.innerHTML = `
+    <div class="combo-dots left"><span></span><span></span><span></span></div>
+    <span class="combo-label">combo +5</span>
+    <div class="combo-dots right"><span></span><span></span><span></span></div>
+  `;
+  el.style.left = `${x}px`;
+  el.style.bottom = `${y}px`;
+  scorePopupsEl.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+function hitHazard() {
+  if (isInvincible || gameState !== "playing") return;
+  playHurtSound();
+
+  // 먹구름 피격: 하트는 차감하지 않고 점수만 -50점 감점
+  score = Math.max(0, score - HAZARD_SCORE_PENALTY);
+  const stageWidth = getStageWidth();
+  showScorePopup(HAZARD_SCORE_PENALTY, "minus", stageWidth * 0.25, getCharBaseBottomPx() - 18);
+  updateHud();
+
+  // 1초간 무적 반짝임 및 다친 애니메이션 적용
   isInvincible = true;
   characterEl.classList.add("invincible");
   characterVisualEl.src = SPRITES.hurt;
@@ -770,30 +1133,24 @@ function applyDamage() {
   }, INVINCIBLE_DURATION);
 }
 
-function showScorePopup(amount, type, x, y) {
-  const el = document.createElement("div");
-  el.className = `score-popup ${type}`;
-  el.textContent = `${type === "minus" ? "-" : "+"}${amount}`;
-  el.style.left = `${x}px`;
-  el.style.bottom = `${y}px`;
-  scorePopupsEl.appendChild(el);
-  setTimeout(() => el.remove(), 800);
-}
-
-function hitHazard() {
-  if (isInvincible || gameState !== "playing") return;
-  playHurtSound();
-  applyDamage();
-}
-
 function fallIntoGap() {
-  if (isInvincible || gameState !== "playing") return;
+  if (isFalling || gameState !== "playing") return;
+  isFalling = true;
   playFallSound();
-  applyDamage();
+
+  // 낭떠러지 추락: 회전하며 아래로 푹 고꾸라지는 리얼 낙사 애니메이션
+  characterEl.classList.add("falling");
+  characterVisualEl.src = SPRITES.hurt;
+
+  // 0.5초 동안 낙사 연출 후 즉시 게임 오버 (사망)
+  setTimeout(() => {
+    finished = false;
+    endGame();
+  }, 500);
 }
 
 function checkGapFall() {
-  if (gameState !== "playing" || isInvincible) return;
+  if (gameState !== "playing" || isInvincible || isFalling) return;
   if (jumpOffset > 4) return;
 
   const stageWidth = getStageWidth();
@@ -863,7 +1220,11 @@ function resetScrollWorld() {
   SCROLL_SPEED = SCROLL_SPEED_EARLY;
   clearItems();
   clearHazards();
+  clearChocolates();
+  clearMiniStars();
   clearScorePopups();
+  totalTileSpawnCount = 0;
+  lastChocolateSpawnTileIndex = -2;
   initPlatforms();
   bgOffset = 0;
   updateBgScroll(0);
@@ -915,28 +1276,44 @@ function physicsLoop(timestamp) {
   updatePlatforms(dt);
   checkGapFall();
   updateItems(dt);
+  updateMiniStars(dt);
   updateHazards(dt);
+  updateChocolates(dt);
   updateBgScroll(dt);
 
   physicsRafId = requestAnimationFrame(physicsLoop);
 }
 
-function startCountdown() {
+function startCountdown(chimeStartTime) {
   gameState = "countdown";
   showScreen("countdown");
 
   let count = 3;
   countdownNumberEl.textContent = count;
-  playCountdownTick();
 
+  // Web Audio API의 currentTime 기반 음악적 리듬 정밀 스케줄링 적용
+  // 시작 차임음(0.0초~0.28초) ➔ 3 (0.35초) ➔ 2 (1.35초) ➔ 1 (2.35초) ➔ START! (3.35초)
+  if (soundOn && ensureAudio()) {
+    const baseT = (chimeStartTime && chimeStartTime > 0) ? chimeStartTime : audioCtx.currentTime;
+    const firstTickTime = baseT + 0.35;
+
+    // 3, 2, 1 틱 사운드를 차임음 직후 1.000초 정박으로 예약
+    playTone(440, firstTickTime, 0.12, "square", 0.12);        // '3' (0.35초)
+    playTone(440, firstTickTime + 1.0, 0.12, "square", 0.12);  // '2' (1.35초)
+    playTone(440, firstTickTime + 2.0, 0.12, "square", 0.12);  // '1' (2.35초)
+
+    // 'START!' 피날레 사운드 (3.35초)
+    playTone(660, firstTickTime + 3.0, 0.1, "square", 0.14);
+    playTone(880, firstTickTime + 3.09, 0.28, "triangle", 0.18);
+  }
+
+  // 화면 UI 숫자 전환 (1초 간격)
   countdownTimerId = setInterval(() => {
     count -= 1;
     if (count > 0) {
       countdownNumberEl.textContent = count;
-      playCountdownTick();
     } else if (count === 0) {
       countdownNumberEl.textContent = "START!";
-      playCountdownGo();
     } else {
       clearInterval(countdownTimerId);
       countdownTimerId = null;
@@ -975,18 +1352,7 @@ function startPlaying() {
   }, 1000);
 }
 
-function loseHeart() {
-  if (gameState !== "playing") return;
-  hearts -= 1;
-  score = Math.max(0, score - HEART_PENALTY);
-  const stageWidth = getStageWidth();
-  showScorePopup(HEART_PENALTY, "minus", stageWidth * 0.25, getCharBaseBottomPx() - 18);
-  updateHud();
-  if (hearts <= 0) {
-    finished = false;
-    endGame();
-  }
-}
+
 
 function endGame() {
   clearAllTimers();
@@ -1005,19 +1371,21 @@ function endGame() {
 }
 
 const GRADES = [
-  { min: 240, minGolden: 5, name: "전설의 솜뭉치", tier: 4, icon: "👑" },
-  { min: 120, name: "별빛 모험가", tier: 2, icon: "⭐" },
-  { min: 0, name: "꿈길 초보", tier: 0, icon: "🐾" },
+  { min: 400, minGolden: 5, name: "전설의 솜뭉치", tier: 4, icon: "👑" },
+  { min: 200, name: "별빛 모험가", tier: 2, icon: "⭐" },
+  { min: 100, name: "꿈길 초보", tier: 0, icon: "🐾" },
 ];
 
 function calcGrade(finalScore, finalGoldenCount) {
-  return GRADES.find((g) => finalScore >= g.min && finalGoldenCount >= (g.minGolden || 0));
+  return (
+    GRADES.find((g) => finalScore >= g.min && finalGoldenCount >= (g.minGolden || 0)) ||
+    GRADES[GRADES.length - 1]
+  );
 }
 
 function showResult() {
   resultScoreEl.textContent = score;
   resultGoldenEl.textContent = goldenCount;
-  resultHeartsEl.textContent = hearts;
   resultFinishedEl.textContent = finished ? "완주 성공" : "게임 오버";
 
   const badgeEl = document.querySelector(".result-grade-badge");
@@ -1072,10 +1440,19 @@ function showWinSparkles(finished) {
 // ===== 시작 버튼 =====
 btnStart.addEventListener("click", async () => {
   if (gameState === "countdown" || gameState === "playing") return;
+  btnStart.disabled = true;
+
   await unlockAudio();
-  playStartChime();
+  const chimeT = playStartChime();
   resetGameData();
-  startCountdown();
+
+  // 브라우저 GPU 렌더링 파이프라인 사전 예열 (첫 시작 시 텍스처 디코딩 렉 100% 방지)
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      btnStart.disabled = false;
+      startCountdown(chimeT);
+    });
+  });
 });
 
 // ===== 다시 시작 버튼 =====
@@ -1084,10 +1461,15 @@ btnRestart.addEventListener("click", async () => {
 
   btnRestart.disabled = true;
   await unlockAudio();
-  playStartChime();
+  const chimeT = playStartChime();
   clearAllTimers();
   resetGameData();
-  startCountdown();
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      startCountdown(chimeT);
+    });
+  });
 });
 
 // ===== 점프 입력 =====
@@ -1098,18 +1480,28 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+let lastJumpInputTime = 0;
+
 function handleScreenJumpInput(e) {
   if (gameState !== "playing") return;
   if (e.target.closest("button")) return;
-  if (typeof e.preventDefault === "function") {
+
+  const now = performance.now();
+  if (now - lastJumpInputTime < 60) {
+    if (typeof e.preventDefault === "function" && e.cancelable) {
+      e.preventDefault();
+    }
+    return;
+  }
+  lastJumpInputTime = now;
+
+  if (typeof e.preventDefault === "function" && e.cancelable) {
     e.preventDefault();
   }
   jump();
 }
 
 gameContainerEl.addEventListener("pointerdown", handleScreenJumpInput, { passive: false });
-gameContainerEl.addEventListener("touchstart", handleScreenJumpInput, { passive: false });
-gameContainerEl.addEventListener("click", handleScreenJumpInput);
 
 ["pointerdown", "touchstart", "click"].forEach((eventName) => {
   document.addEventListener(
@@ -1204,6 +1596,10 @@ document.getElementById("btn-restart-pause").addEventListener("click", async () 
 });
 
 document.getElementById("btn-home-pause").addEventListener("click", () => {
+  goHome();
+});
+
+document.getElementById("btn-home-gameover").addEventListener("click", () => {
   goHome();
 });
 

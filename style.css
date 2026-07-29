@@ -148,8 +148,13 @@ body.show-orientation-hint #orientation-hint {
   backdrop-filter: blur(2px);
   border: 3px solid #fff;
   border-radius: 28px;
-  padding: 28px 40px 32px;
+  padding: 14px 28px 16px;
   box-shadow: 0 12px 24px rgba(120, 70, 150, 0.18);
+  max-height: 96%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .title-wrap {
@@ -157,12 +162,13 @@ body.show-orientation-hint #orientation-hint {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .title-dog {
-  width: 48px;
-  height: auto;
+  height: 42px;
+  width: auto;
+  object-fit: contain;
   animation: bounce-dog 1.6s ease-in-out infinite;
 }
 
@@ -173,7 +179,7 @@ body.show-orientation-hint #orientation-hint {
 
 .title {
   font-family: "Jua", "Gaegu", sans-serif;
-  font-size: clamp(22px, 4.2vw, 34px);
+  font-size: clamp(20px, 3.8vw, 30px);
   margin: 0;
   color: #8a4fbf;
   text-shadow: 0 3px 0 #fff, 0 5px 10px rgba(138, 79, 191, 0.3);
@@ -183,25 +189,27 @@ body.show-orientation-hint #orientation-hint {
 }
 
 .subtitle {
-  margin: 0 0 20px;
-  line-height: 1.7;
-  font-size: 21px;
+  margin: 0 0 10px;
+  line-height: 1.35;
+  font-size: 16px;
   color: #5c3a7a;
 }
 
 .howto {
   background: rgba(255,255,255,0.85);
   border: 2px dashed #e3b8f0;
-  border-radius: 20px;
-  padding: 16px 26px;
-  margin-bottom: 22px;
+  border-radius: 18px;
+  padding: 10px 18px;
+  margin-bottom: 12px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  width: 100%;
+  max-width: 410px;
 }
 
 .howto h2 {
   font-family: "Jua", sans-serif;
-  margin: 0 0 10px;
-  font-size: 19px;
+  margin: 0 0 4px;
+  font-size: 18px;
   color: #a15fc9;
 }
 
@@ -209,38 +217,41 @@ body.show-orientation-hint #orientation-hint {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 16px;
-  margin-bottom: 8px;
+  gap: 6px;
+  font-size: 15px;
+  margin-bottom: 5px;
 }
 
 .key-or {
-  font-size: 14px;
+  font-size: 13px;
   color: #9a7ab0;
 }
 
 .howto-desc {
   font-family: "Jua", sans-serif;
   color: #ff6fb0;
-  font-size: 18px;
-  margin-left: 4px;
+  font-size: 17px;
+  margin-left: 2px;
+  white-space: nowrap;
 }
 
 .howto-sub {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.6;
+  margin: 6px 0 0;
+  font-family: "Jua", "Gaegu", sans-serif;
+  font-size: 17px;
+  line-height: 1.3;
   color: #5c3a7a;
+  white-space: nowrap;
 }
 
 .score-guide {
   display: grid;
   grid-template-columns: minmax(220px, 1fr);
-  gap: 6px;
-  margin: 10px auto 9px;
-  max-width: 320px;
+  gap: 4px;
+  margin: 6px auto 5px;
+  max-width: 350px;
   font-size: 16px;
-  line-height: 1.25;
+  line-height: 1.2;
   color: #5c3a7a;
 }
 
@@ -249,14 +260,20 @@ body.show-orientation-hint #orientation-hint {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 5px 9px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.58);
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.62);
+  white-space: nowrap;
+}
+
+.score-guide div span {
+  font-size: 16px;
+  white-space: nowrap;
 }
 
 .score-guide strong {
   font-family: "Jua", sans-serif;
-  font-size: 16px;
+  font-size: 17px;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -371,10 +388,18 @@ body.show-orientation-hint #orientation-hint {
   left: 0;
   right: 0;
   display: flex;
-  gap: 10px;
-  padding: 12px;
-  z-index: 5;
+  justify-content: space-between;
   align-items: center;
+  padding: 12px 14px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.hud-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  pointer-events: auto;
 }
 
 .hud-card {
@@ -387,9 +412,28 @@ body.show-orientation-hint #orientation-hint {
   box-shadow: 0 3px 0 rgba(0,0,0,0.08);
 }
 
-.hud-sound {
+.hud-btn-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.hud-btn-group .btn-round {
+  width: 50px;
+  height: 50px;
+  font-size: 21px;
   margin-top: 0;
-  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.12);
+  transition: transform 0.1s;
+}
+
+.hud-btn-group .btn-round:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.12);
 }
 
 #stage {
@@ -397,6 +441,8 @@ body.show-orientation-hint #orientation-hint {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* 배경 이미지 스크롤 (이음새 없이 이어 붙여 흘러가는 배경) */
@@ -510,6 +556,74 @@ body.show-orientation-hint #orientation-hint {
 .score-popup.minus {
   color: #e44343;
   animation-name: score-popup-drop;
+}
+
+/* ===== 콤보 전용 팝업 ===== */
+.score-popup.combo {
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: combo-rise 1.0s ease-out forwards;
+  z-index: 15;
+  white-space: nowrap;
+}
+
+.combo-label {
+  font-family: "Jua", sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  background: linear-gradient(180deg, #ffe040 0%, #ff8c00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 1px 3px rgba(255, 140, 0, 0.55));
+  letter-spacing: 0.5px;
+}
+
+/* 양옆 점 그룹 */
+.combo-dots {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+}
+
+.combo-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: block;
+  opacity: 0;
+}
+
+/* 왼쪽 점: 왼쪽으로 퍼짐 */
+.combo-dots.left span:nth-child(1) { background: #ffe040; animation: dot-spread-left-up   0.9s ease-out forwards 0.05s; }
+.combo-dots.left span:nth-child(2) { background: #ffaa00; animation: dot-spread-left-mid  0.9s ease-out forwards 0.0s;  }
+.combo-dots.left span:nth-child(3) { background: #ff8c00; animation: dot-spread-left-down 0.9s ease-out forwards 0.05s; }
+
+/* 오른쪽 점: 오른쪽으로 퍼짐 */
+.combo-dots.right span:nth-child(1) { background: #ffe040; animation: dot-spread-right-up   0.9s ease-out forwards 0.05s; }
+.combo-dots.right span:nth-child(2) { background: #ffaa00; animation: dot-spread-right-mid  0.9s ease-out forwards 0.0s;  }
+.combo-dots.right span:nth-child(3) { background: #ff8c00; animation: dot-spread-right-down 0.9s ease-out forwards 0.05s; }
+
+@keyframes dot-spread-left-up   { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(-11px,-9px)} }
+@keyframes dot-spread-left-mid  { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(-13px,0px)} }
+@keyframes dot-spread-left-down { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(-11px,9px)} }
+
+@keyframes dot-spread-right-up   { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(11px,-9px)} }
+@keyframes dot-spread-right-mid  { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(13px,0px)} }
+@keyframes dot-spread-right-down { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(11px,9px)} }
+
+@keyframes combo-rise {
+  0%   { opacity: 0; transform: translate(-50%, 0px)  scale(0.85); }
+  18%  { opacity: 1; transform: translate(-50%, -10px) scale(1.08); }
+  60%  { opacity: 1; transform: translate(-50%, -26px) scale(1.0); }
+  100% { opacity: 0; transform: translate(-50%, -48px) scale(0.95); }
 }
 
 .item {
@@ -719,6 +833,24 @@ body.show-orientation-hint #orientation-hint {
   animation: hurt-blink 0.15s steps(1) infinite;
 }
 
+#character.falling #character-visual {
+  animation: fall-spin-drop 0.55s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards !important;
+}
+
+@keyframes fall-spin-drop {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(20px) rotate(-35deg) scale(1.08);
+  }
+  100% {
+    transform: translateY(320px) rotate(240deg) scale(0.55);
+    opacity: 0.1;
+  }
+}
+
 @keyframes run-bob {
   0%, 100% { transform: translateY(0) rotate(-3deg); }
   50% { transform: translateY(-6px) rotate(3deg); }
@@ -805,6 +937,26 @@ body.show-orientation-hint #orientation-hint {
   box-shadow: 0 14px 28px rgba(120, 70, 150, 0.22);
   width: 420px;
   max-width: 90%;
+}
+
+.result-btn-group {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.result-btn-group .btn {
+  flex: 1;
+  padding: 12px 14px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .result-card.win-flair::before {
@@ -953,15 +1105,21 @@ body.show-orientation-hint #orientation-hint {
 
 .result-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 22px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto 22px;
 }
 
 .result-item {
   background: rgba(255, 235, 245, 0.7);
   border-radius: 16px;
-  padding: 10px 6px;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .result-icon {
@@ -981,6 +1139,43 @@ body.show-orientation-hint #orientation-hint {
   margin-top: 2px;
 }
 
+
 .result-sad #result-title {
   color: #6a5a86;
+}
+
+/* ===== 작은 별 (점프 궤적) ===== */
+.mini-star {
+  position: absolute;
+  font-size: 26px;
+  filter: drop-shadow(0 2px 3px rgba(150, 110, 180, 0.35));
+  animation: item-float 1s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.mini-star.collected {
+  animation: none;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  transform: scale(1.6) translateY(-16px);
+  opacity: 0;
+}
+
+/* ===== 초콜릿 장애물 (3단계 전용) ===== */
+.chocolate {
+  position: absolute;
+  font-size: 28px;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgba(80, 30, 10, 0.5));
+  animation: choco-wobble 0.5s ease-in-out infinite;
+  z-index: 2;
+}
+
+.choco-wobble {
+  animation: choco-wobble 0.5s ease-in-out infinite;
+}
+
+@keyframes choco-wobble {
+  0%, 100% { transform: rotate(-8deg) scale(1); }
+  50% { transform: rotate(8deg) scale(1.05); }
 }

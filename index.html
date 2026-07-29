@@ -38,12 +38,13 @@
         <h2>🎮 조작법</h2>
         <div class="howto-row">
           <span class="key">Space</span> <span class="key-or">또는</span> <span class="key">↑</span>
-          <span class="howto-desc">점프! (공중에서 한 번 더 2단 점프 가능)</span>
+          <span class="howto-desc">점프! (2단 점프 가능)</span>
         </div>
         <div class="score-guide" aria-label="점수 제도">
           <div><span>⭐ 별</span><strong class="score-plus">+10점</strong></div>
           <div><span>🍖 황금뼈다귀</span><strong class="score-plus">+25점</strong></div>
-          <div><span>❤️ 생명력 잃을 시</span><strong class="score-minus">-80점</strong></div>
+          <div><span>🍫 초콜릿</span><strong class="score-minus">-20점</strong></div>
+          <div><span>🌧️ 먹구름</span><strong class="score-minus">-50점</strong></div>
         </div>
         <p class="howto-sub">45초 동안 살아남으세요! 🍖✨</p>
       </div>
@@ -61,14 +62,15 @@
   <!-- 게임 화면 -->
   <section id="screen-playing" class="screen hidden">
     <div id="hud">
-      <div class="hud-card">⭐ <span id="hud-score">0</span></div>
-      <div class="hud-card"><span class="golden-icon">🍖</span> <span id="hud-treats">0</span></div>
-      <div class="hud-card">❤️ <span id="hud-hearts">3</span></div>
-      <div class="hud-card">⏱️ <span id="hud-time">45</span></div>
+      <div class="hud-left">
+        <div class="hud-card">⭐ <span id="hud-score">0</span></div>
+        <div class="hud-card"><span class="golden-icon">🍖</span> <span id="hud-treats">0</span></div>
+        <div class="hud-card">⏱️ <span id="hud-time">45</span></div>
+      </div>
       <div class="hud-btn-group">
-        <button id="btn-pause-playing" class="btn btn-round hud-sound" aria-label="일시정지">⏸️</button>
-        <button id="btn-home-playing" class="btn btn-round hud-sound" aria-label="홈으로">🏠</button>
-        <button id="btn-sound-playing" class="btn btn-round hud-sound" aria-label="사운드 켜기/끄기">🔊</button>
+        <button id="btn-pause-playing" class="btn btn-round" aria-label="일시정지">⏸️</button>
+        <button id="btn-home-playing" class="btn btn-round" aria-label="홈으로">🏠</button>
+        <button id="btn-sound-playing" class="btn btn-round" aria-label="사운드 켜기/끄기">🔊</button>
       </div>
     </div>
 
@@ -129,18 +131,16 @@
           <div class="result-value"><span id="result-treats">0</span>개</div>
         </div>
         <div class="result-item">
-          <div class="result-icon">❤️</div>
-          <div class="result-label">남은 하트</div>
-          <div class="result-value"><span id="result-hearts">0</span>개</div>
-        </div>
-        <div class="result-item">
           <div class="result-icon">🏁</div>
           <div class="result-label">완주 여부</div>
           <div class="result-value" id="result-finished">-</div>
         </div>
       </div>
 
-      <button id="btn-restart" class="btn btn-primary">다시 시작 ▶</button>
+      <div class="result-btn-group">
+        <button id="btn-restart" class="btn btn-primary">다시 시작 🔄</button>
+        <button id="btn-home-gameover" class="btn btn-secondary">홈으로 🏠</button>
+      </div>
     </div>
   </section>
 
