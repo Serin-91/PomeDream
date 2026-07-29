@@ -115,7 +115,7 @@ const ITEM_HEIGHT_ABOVE_GROUND = 130;
 const ITEM_SCORE = 10;
 const GOLDEN_SIZE = 46;
 const GOLDEN_SCORE = 25;
-const HAZARD_SCORE_PENALTY = 50; // 먹구름 피격 시 점수 감점 (-50점)
+const HAZARD_SCORE_PENALTY = 40; // 먹구름 피격 시 점수 감점 (-40점)
 const GUARANTEED_GOLDEN_SPAWN_TIMES = [8, 17, 26, 34, 41]; // 확정 등장 5개 (약 8~9초 간격)
 const CHAR_HITBOX_WIDTH = 55;
 const CHAR_HITBOX_HEIGHT = 58;
@@ -136,8 +136,8 @@ let invincibleTimeoutId = null;
 
 // ===== 작은 별 (점프 궤적) =====
 // ★ 생성 확률 조정 위치: MINI_STAR_SPAWN_CHANCE
-const MINI_STAR_SPAWN_CHANCE = 0.18;  // 발판 1개당 작은별 곡선 생성 확률 (0.0~1.0)
-const MINI_STAR_SCORE = 1;            // 작은 별 1개당 점수
+const MINI_STAR_SPAWN_CHANCE = 0.30;  // 발판 1개당 작은별 곡선 생성 확률 (판당 편차 완화를 위해 30%로 상향)
+const MINI_STAR_SCORE = 2;            // 작은 별 1개당 점수
 const MINI_STAR_SIZE = 26;            // 작은 별 크기(px, 일반 별 44px 대비 축소하여 통일)
 const MINI_STAR_MAX_COUNT = 5;        // 곡선당 최대 별 개수
 
@@ -149,7 +149,7 @@ let arcTrackers = {}; // { [arcId]: { total, collected, bonusAwarded } }
 // ★ 생성 확률 조정 위치: CHOCOLATE_SPAWN_RATE_STAGE_2, CHOCOLATE_SPAWN_RATE_STAGE_3
 const CHOCOLATE_SPAWN_RATE_STAGE_2 = 0.15; // 2단계 (15~30초) 초콜릿 생성 확률 (15%)
 const CHOCOLATE_SPAWN_RATE_STAGE_3 = 0.32; // 3단계 (30~45초) 초콜릿 생성 확률 (32%)
-const CHOCOLATE_SCORE_PENALTY = 20;   // 초콜릿 충돌 시 점수 감소
+const CHOCOLATE_SCORE_PENALTY = 15;   // 초콜릿 충돌 시 점수 감소
 const CHOCOLATE_SIZE = 32;            // 초콜릿 충돌 판정 크기(px)
 const CHOCOLATE_FLY_SPEED_ADD = 180;  // 초콜릿 비행 추가 속도(px/s)
 // 다채로운 4가지 비행 높이 (낮음 68px, 중간 112px, 높음 156px, 초고공 198px)
@@ -1113,7 +1113,7 @@ function hitHazard() {
   if (isInvincible || gameState !== "playing") return;
   playHurtSound();
 
-  // 먹구름 피격: 하트는 차감하지 않고 점수만 -50점 감점
+  // 먹구름 피격: 하트는 차감하지 않고 점수만 -40점 감점
   score = Math.max(0, score - HAZARD_SCORE_PENALTY);
   const stageWidth = getStageWidth();
   showScorePopup(HAZARD_SCORE_PENALTY, "minus", stageWidth * 0.25, getCharBaseBottomPx() - 18);
