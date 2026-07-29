@@ -38,7 +38,7 @@
         <h2>🎮 조작법</h2>
         <div class="howto-row">
           <span class="key">Space</span> <span class="key-or">또는</span> <span class="key">↑</span>
-          <span class="howto-desc">점프!</span>
+          <span class="howto-desc">점프! (공중에서 한 번 더 2단 점프 가능)</span>
         </div>
         <div class="score-guide" aria-label="점수 제도">
           <div><span>⭐ 별</span><strong class="score-plus">+10점</strong></div>
@@ -65,7 +65,11 @@
       <div class="hud-card"><span class="golden-icon">🍖</span> <span id="hud-treats">0</span></div>
       <div class="hud-card">❤️ <span id="hud-hearts">3</span></div>
       <div class="hud-card">⏱️ <span id="hud-time">45</span></div>
-      <button id="btn-sound-playing" class="btn btn-round hud-sound" aria-label="사운드 켜기/끄기">🔊</button>
+      <div class="hud-btn-group">
+        <button id="btn-pause-playing" class="btn btn-round hud-sound" aria-label="일시정지">⏸️</button>
+        <button id="btn-home-playing" class="btn btn-round hud-sound" aria-label="홈으로">🏠</button>
+        <button id="btn-sound-playing" class="btn btn-round hud-sound" aria-label="사운드 켜기/끄기">🔊</button>
+      </div>
     </div>
 
     <div id="stage">
@@ -80,6 +84,19 @@
       <div id="score-popups"></div>
       <div id="character"><img id="character-visual" src="images/캐릭터_Run.png" alt="포메"></div>
       <div id="phase-announce"></div>
+    </div>
+  </section>
+
+  <!-- 일시정지 오버레이 -->
+  <section id="screen-pause" class="screen hidden">
+    <div class="pause-card">
+      <h2 class="pause-title">⏸️ 일시정지</h2>
+      <p class="pause-desc">잠시 쉬어가요!</p>
+      <div class="pause-btn-group">
+        <button id="btn-resume" class="btn btn-primary">계속하기 ▶</button>
+        <button id="btn-restart-pause" class="btn btn-secondary">다시 시작 🔄</button>
+        <button id="btn-home-pause" class="btn btn-secondary">홈으로 🏠</button>
+      </div>
     </div>
   </section>
 

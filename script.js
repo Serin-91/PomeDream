@@ -1,5 +1,5 @@
-﻿// ===== 게임 상태 =====
-// ready -> countdown -> playing -> gameOver -> (재시작) -> countdown -> ...
+// ===== 게임 상태 =====
+// ready -> countdown -> playing -> pause -> gameOver -> (재시작) -> countdown -> ...
 let gameState = "ready";
 
 const GAME_DURATION = 45;
@@ -24,6 +24,7 @@ const GROUND_RATIO = 0.46; // 발판의 bottom 비율 (HUD를 제외한 플레�
 let velocityY = 0;
 let jumpOffset = 0; // 발판 기준 위로 올라간 거리(px)
 let isOnGround = true;
+let jumpCount = 0; // 0: 지면, 1: 1차 점프, 2: 2차 점프
 let lastPhysicsTime = null;
 
 // ===== 화면 요소 =====
@@ -31,6 +32,7 @@ const screens = {
   ready: document.getElementById("screen-ready"),
   countdown: document.getElementById("screen-countdown"),
   playing: document.getElementById("screen-playing"),
+  pause: document.getElementById("screen-pause"),
   gameOver: document.getElementById("screen-gameover"),
 };
 
@@ -85,15 +87,19 @@ Object.values(SPRITES).forEach((src) => {
 let SCROLL_SPEED = 300; // px/s, 시간 구간에 따라 매 프레임 갱신되는 실제 속도 (초기값 = 0~15초 구간 값)
 const PLATFORM_WIDTH = 240;
 
-// 구름 틈: 있을 때도, 없을 때도 있도록 확률로 결정. 점프는 한 번뿐이므로
-// 점프 체공시간(약 0.64초 = 240px/s * 0.64 ≈ 153px) 안에 건널 수 있는 폭으로 제한한다.
-// 시간 구간별로 등장 확률을 점진적으로 높여서(초반<중반<후반) 난이도가 서서히 올라가게 한다.
-const GAP_CHANCE_EARLY = 0.6; // 0~15초
-const GAP_CHANCE_MID = 0.72; // 15~30초
-const GAP_CHANCE_LATE = 0.82; // 30~45초 (너무 불가능해지지 않도록 상한을 둠)
-const GAP_WIDTH = 110;
-const MIN_TILES_BETWEEN_GAPS = 1; // 틈 사이 최소 발판 간격 (착지 불가능한 연쇄 방지)
-const MAX_CONSECUTIVE_GAPS = 2; // 틈은 최대 2회까지만 연속 생성, 그 다음엔 반드시 일반 발판
+// 구름 틈: 있을 때도, 없을 때도 있도록 확률로 결정.
+const GAP_CHANCE_EARLY = 0.65; // 0~15초 (상향)
+const GAP_CHANCE_MID = 0.78;  // 15~30초 (상향)
+const GAP_CHANCE_LATE = 0.88; // 30~45초 (상향)
+const GAP_WIDTH = 115;         // 구름 하나 너비 수준 (단일 틈도 도전적)
+const DOUBLE_GAP_WIDTH = 200;  // 구름 두 개 너비 수준 (이단점프필요)
+const MIN_TILES_BETWEEN_GAPS = 1; // 틈 사이 최소 발판 1개
+const MAX_CONSECUTIVE_GAPS = 2;   // 최대 연속 틈 2개
+
+// 이중 틈 등장 확률 (구간별)
+const DOUBLE_GAP_CHANCE_EARLY = 0.25;  // 0~15초: 25% 확률
+const DOUBLE_GAP_CHANCE_MID = 0.38;   // 15~30초: 38% 확률
+const DOUBLE_GAP_CHANCE_LATE = 0.52;  // 30~45초: 52% 확률
 
 let platforms = []; // { el, x, width }
 let tilesSinceGap = 0;
@@ -103,23 +109,23 @@ let bgOffset = 0;
 
 // ===== 간식 아이템 =====
 const ITEM_SIZE = 44;
-const ITEM_HEIGHT_ABOVE_GROUND = 130; // px, 캐릭터 기준 더 높은 위치(점프 정점 부근)에서 닿도록 조정
-const ITEM_SCORE = 10; // 별 간식
+const ITEM_HEIGHT_ABOVE_GROUND = 130;
+const ITEM_SCORE = 10;
 const GOLDEN_SIZE = 46;
-const GOLDEN_SCORE = 25; // 황금 뼈다귀 (희귀 보너스)
-const HEART_PENALTY = 80; // 피해 감점
-const GUARANTEED_GOLDEN_SPAWN_TIMES = [6, 14, 22, 31, 39]; // 전설 등급 도전 기회 보장용 출현 시점
+const GOLDEN_SCORE = 25;
+const HEART_PENALTY = 80;
+const GUARANTEED_GOLDEN_SPAWN_TIMES = [6, 14, 22, 31, 39];
 const CHAR_HITBOX_WIDTH = 55;
 const CHAR_HITBOX_HEIGHT = 58;
-const CHAR_GROUND_OFFSET = 26; // 캐릭터를 구름 발판 위쪽(뭉게구름 위)에 서 있는 것처럼 살짝 띄움
+const CHAR_GROUND_OFFSET = 26;
 
 let items = []; // { el, x, collected, type }
 let guaranteedGoldenSpawnIndex = 0;
 
-// ===== 위험 요소 (번개 구름) =====
-const HAZARD_SIZE = 38; // 시각적 크기
-const HAZARD_HITBOX_SIZE = 22; // 실제 충돌 판정은 그림보다 살짝 관대하게 좁힘
-const HAZARD_HEIGHT = 58; // 이 높이보다 낮게 점프하면 충돌 (기존 72 → 더 낮은 점프로도 회피 가능하게 완화)
+// ===== 위험 요소 (비 내리는 회색 먹구름) =====
+const HAZARD_SIZE = 38;
+const HAZARD_HITBOX_SIZE = 22;
+const HAZARD_HEIGHT = 58;
 const INVINCIBLE_DURATION = 1000;
 
 let hazards = []; // { el, x }
@@ -127,12 +133,11 @@ let isInvincible = false;
 let invincibleTimeoutId = null;
 
 // ===== 등장 확률 (시간 구간별) =====
-// 시작 직후 SAFE_START_SECONDS 동안은 번개 구름 없이 간식만 등장 (기획안 9번 항목 "초반 조작 적응 구간"과 동일한 취지)
-const SAFE_START_SECONDS = 3;
+const SAFE_START_SECONDS = 2; // 초반 무적 안전 구간 2초로 단축
 const SPAWN_PHASES = [
-  { untilElapsed: 15, hazard: 0.17, item: 0.6, golden: 0.1 }, // 초반
-  { untilElapsed: 30, hazard: 0.25, item: 0.55, golden: 0.14 }, // 중반
-  { untilElapsed: GAME_DURATION, hazard: 0.33, item: 0.5, golden: 0.18 }, // 후반
+  { untilElapsed: 15, hazard: 0.22, item: 0.58, golden: 0.1 },   // 위험물 상향
+  { untilElapsed: 30, hazard: 0.32, item: 0.52, golden: 0.14 },  // 위험물 상향
+  { untilElapsed: GAME_DURATION, hazard: 0.42, item: 0.46, golden: 0.18 }, // 위험물 대폭 상향
 ];
 
 function getSpawnRates() {
@@ -144,17 +149,21 @@ function getSpawnRates() {
   return { hazard: phase.hazard, item: phase.item, golden: phase.golden };
 }
 
-// 구름 틈 등장 확률: 초반(0~15초) < 중반(15~30초) < 후반(30~45초) 순으로 점진 증가
 function getGapChance(elapsed) {
   if (elapsed < 15) return GAP_CHANCE_EARLY;
   if (elapsed < 30) return GAP_CHANCE_MID;
   return GAP_CHANCE_LATE;
 }
 
-// 장애물(발판/아이템 등) 이동 속도: 초반 276 → 중반 324 → 후반 352 px/s로 점진 증가
-const SCROLL_SPEED_EARLY = 300;
-const SCROLL_SPEED_MID = 334;
-const SCROLL_SPEED_LATE = 372;
+const SCROLL_SPEED_EARLY = 320;  // 초반 속도 상향
+const SCROLL_SPEED_MID = 365;    // 중반 속도 상향
+const SCROLL_SPEED_LATE = 415;   // 후반 속도 대폭 상향
+
+function getDoubleGapChance(elapsed) {
+  if (elapsed < 15) return DOUBLE_GAP_CHANCE_EARLY;
+  if (elapsed < 30) return DOUBLE_GAP_CHANCE_MID;
+  return DOUBLE_GAP_CHANCE_LATE;
+}
 
 function updateScrollSpeedForPhase() {
   const elapsed = GAME_DURATION - timeLeft;
@@ -273,6 +282,14 @@ function playJumpSound() {
   playTone(760, t + 0.05, 0.12, "triangle", 0.12);
 }
 
+function playDoubleJumpSound() {
+  if (!soundOn) return;
+  if (!ensureAudio()) return;
+  const t = audioCtx.currentTime;
+  playTone(680, t, 0.09, "triangle", 0.16);
+  playTone(1020, t + 0.04, 0.12, "sine", 0.18);
+}
+
 function playStarSound() {
   if (!soundOn) return;
   if (!ensureAudio()) return;
@@ -285,9 +302,7 @@ function playGoldenSound() {
   if (!soundOn) return;
   if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
-  // 화려한 상승 아르페지오
   [784, 988, 1175, 1568, 1976].forEach((f, i) => playTone(f, t + i * 0.055, 0.22, "triangle", 0.2));
-  // 위에 얹는 반짝이는 화음
   [1568, 1976, 2349].forEach((f, i) => playTone(f, t + 0.26 + i * 0.05, 0.32, "sine", 0.12));
 }
 
@@ -311,12 +326,11 @@ function playWinSound() {
   if (!ensureAudio()) return;
   const t = audioCtx.currentTime;
 
-  // 화성이 실린 팡파레 (삼화음 상승 진행, 마지막이 클라이맥스)
   const chords = [
-    [523.25, 659.25, 784.0], // C
-    [587.33, 739.99, 880.0], // D
-    [659.25, 830.61, 987.77], // E
-    [783.99, 987.77, 1174.66], // G (클라이맥스)
+    [523.25, 659.25, 784.0],
+    [587.33, 739.99, 880.0],
+    [659.25, 830.61, 987.77],
+    [783.99, 987.77, 1174.66],
   ];
   chords.forEach((chord, i) => {
     const start = t + i * 0.22;
@@ -324,12 +338,10 @@ function playWinSound() {
     chord.forEach((f) => playTone(f, start, isClimax ? 0.6 : 0.32, isClimax ? "triangle" : "square", 0.1));
   });
 
-  // 고급스러운 박수 텍스처 (밴드패스 노이즈 버스트를 살짝 랜덤한 타이밍으로)
   for (let i = 0; i < 7; i++) {
     playNoiseBurst(t + 0.18 + i * 0.085 + Math.random() * 0.02, 0.09, 0.05, 2600 + Math.random() * 900);
   }
 
-  // 마무리 반짝임
   [1568, 1976, 2349, 3136].forEach((f, i) => playTone(f, t + 1.0 + i * 0.09, 0.35, "sine", 0.1));
 }
 
@@ -363,9 +375,8 @@ function playCountdownGo() {
   playTone(880, t + 0.09, 0.28, "triangle", 0.18);
 }
 
-// 따뜻한 저음 패드 + 반짝이는 고음 레이어를 겹쳐서 "반짝반짝하고 따뜻한" 느낌을 낸다
-const BGM_PAD_NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 392.0, 329.63, 293.66]; // C D E G A G E D
-const BGM_SPARKLE_NOTES = [1046.5, 1318.5, 1567.98, 1318.5]; // C6 E6 G6 E6
+const BGM_PAD_NOTES = [261.63, 293.66, 329.63, 392.0, 440.0, 392.0, 329.63, 293.66];
+const BGM_SPARKLE_NOTES = [1046.5, 1318.5, 1567.98, 1318.5];
 
 function scheduleBgmStep(i) {
   if (!soundOn || gameState !== "playing") {
@@ -394,8 +405,10 @@ function stopBgm() {
 function setSoundOn(value) {
   soundOn = value;
   const icon = soundOn ? "🔊" : "🔇";
-  document.getElementById("btn-sound-ready").textContent = icon;
-  document.getElementById("btn-sound-playing").textContent = icon;
+  const readySoundBtn = document.getElementById("btn-sound-ready");
+  const playingSoundBtn = document.getElementById("btn-sound-playing");
+  if (readySoundBtn) readySoundBtn.textContent = icon;
+  if (playingSoundBtn) playingSoundBtn.textContent = icon;
   if (!soundOn) {
     stopBgm();
   } else if (gameState === "playing") {
@@ -429,14 +442,11 @@ function resetGameData() {
   updateHud();
 }
 
-// 난이도 구간 전환 안내 문구 (한 번만, 약 1.5초간 페이드 인/아웃)
 function showPhaseAnnounce(icon, message, fontSizePx, strokeColor) {
   phaseAnnounceEl.textContent = `${icon} ${message}`;
   phaseAnnounceEl.style.fontSize = `${fontSizePx}px`;
   phaseAnnounceEl.style.setProperty("-webkit-text-stroke", `1.5px ${strokeColor}`);
   phaseAnnounceEl.classList.remove("show");
-  // 리플로우 한 번만으로는 브라우저가 애니메이션 재시작을 놓치는 경우가 있어
-  // rAF로 한 프레임 넘긴 뒤 클래스를 다시 붙여 확실하게 재생되도록 한다.
   void phaseAnnounceEl.offsetWidth;
   requestAnimationFrame(() => {
     phaseAnnounceEl.classList.add("show");
@@ -462,7 +472,7 @@ function clearAllTimers() {
   }
 }
 
-const GROUND_Y_SHIFT_DOWN = 60; // 오브젝트들이 위쪽에 몰려 보여서 전체적으로 60px 아래로 이동
+const GROUND_Y_SHIFT_DOWN = 60;
 
 function getStageWidth() {
   return stageEl.clientWidth || GAME_VIEW_WIDTH;
@@ -511,6 +521,7 @@ function resetCharacterPhysics() {
   velocityY = 0;
   jumpOffset = 0;
   isOnGround = true;
+  jumpCount = 0;
   lastPhysicsTime = null;
   characterEl.classList.remove("airborne");
   characterEl.classList.remove("invincible");
@@ -536,7 +547,7 @@ function spawnPlatformAt(xStart, opts) {
   el.className = "platform";
   el.style.width = `${PLATFORM_WIDTH}px`;
   el.style.left = `${xStart}px`;
-  el.style.bottom = `${getGroundBottomPx()}px`; // 캐릭터/아이템/장애물과 동일한 기준(getGroundBottomPx)을 쓰도록 통일
+  el.style.bottom = `${getGroundBottomPx()}px`;
 
   const extraBump = document.createElement("div");
   extraBump.className = "platform-bump-extra";
@@ -546,7 +557,6 @@ function spawnPlatformAt(xStart, opts) {
   platforms.push({ el, x: xStart, width: PLATFORM_WIDTH });
 
   if (opts.noContent) {
-    // 캐릭터 시작 위치와 겹치거나 이미 지나간 자리라 점프해도 닿을 수 없으므로 아이템/장애물을 두지 않음
     lastTileHadHazard = false;
     return;
   }
@@ -580,7 +590,6 @@ function initPlatforms() {
   let x = 0;
   while (x < stageWidth + PLATFORM_WIDTH) {
     const tileCenter = x + PLATFORM_WIDTH / 2;
-    // 캐릭터 위치보다 앞쪽에 최소 한 칸 여유가 있어야 점프해서 닿을 시간이 생긴다
     const reachable = tileCenter > charCenterX + PLATFORM_WIDTH;
     spawnPlatformAt(x, { noContent: !reachable });
     x += PLATFORM_WIDTH;
@@ -603,7 +612,6 @@ function updatePlatforms(dt) {
   const rightEdge = last ? last.x + last.width : 0;
   if (rightEdge < stageWidth) {
     const elapsed = GAME_DURATION - timeLeft;
-    // 번개 구름 바로 뒤에는 틈을 두지 않고, 틈은 최대 2회까지만 연속으로 나오게 한다
     const spacingOk = tilesSinceGap >= MIN_TILES_BETWEEN_GAPS;
     const canGap =
       elapsed >= SAFE_START_SECONDS && spacingOk && !lastTileHadHazard && consecutiveGapCount < MAX_CONSECUTIVE_GAPS;
@@ -611,11 +619,12 @@ function updatePlatforms(dt) {
     if (canGap && Math.random() < getGapChance(elapsed)) {
       tilesSinceGap = 0;
       consecutiveGapCount += 1;
-      spawnPlatformAt(rightEdge + GAP_WIDTH, { suppressHazard: true }); // 틈 직후 발판엔 번개 구름을 두지 않음
+      // 이중 틈 vs 단일 틈 확률적 선택
+      const useDoubleGap = Math.random() < getDoubleGapChance(elapsed);
+      const chosenGap = useDoubleGap ? DOUBLE_GAP_WIDTH : GAP_WIDTH;
+      spawnPlatformAt(rightEdge + chosenGap, { suppressHazard: true });
     } else {
       tilesSinceGap += 1;
-      // 최소 간격 때문에 어쩔 수 없이 나온 일반 발판(스페이서)에서는 연속 카운트를 유지하고,
-      // 간격이 충분한데도 일반 발판이 나온 경우(확률 실패 또는 연속 한도 도달)에만 초기화한다.
       if (spacingOk) {
         consecutiveGapCount = 0;
       }
@@ -719,7 +728,7 @@ function updateItems(dt) {
   });
 }
 
-// ----- 위험 요소 (번개 구름) -----
+// ----- 위험 요소 (비 내리는 회색 먹구름) -----
 function clearHazards() {
   hazards.forEach((h) => h.el.remove());
   hazards = [];
@@ -728,16 +737,25 @@ function clearHazards() {
 function spawnHazardAt(xStart) {
   const el = document.createElement("div");
   el.className = "hazard";
-  el.textContent = "⛈️";
+  el.innerHTML = `
+    <div class="hazard-cloud">
+      <div class="cloud-body"></div>
+      <div class="rain-container">
+        <div class="rain-drop d1"></div>
+        <div class="rain-drop d2"></div>
+        <div class="rain-drop d3"></div>
+      </div>
+      <div class="lightning-flash">⚡</div>
+    </div>
+  `;
   el.style.left = `${xStart}px`;
   hazardsEl.appendChild(el);
   hazards.push({ el, x: xStart });
 }
 
-// 피해 공통 처리 (번개 구름 충돌 / 구름 틈 추락 모두 사용)
 function applyDamage() {
   loseHeart();
-  if (gameState !== "playing") return; // 하트 0으로 게임이 끝난 경우
+  if (gameState !== "playing") return;
 
   isInvincible = true;
   characterEl.classList.add("invincible");
@@ -774,10 +792,9 @@ function fallIntoGap() {
   applyDamage();
 }
 
-// 구름 틈 추락 판정: 캐릭터가 거의 지면 높이(점프 중이 아님)인데 그 아래에 발판이 없으면 추락
 function checkGapFall() {
   if (gameState !== "playing" || isInvincible) return;
-  if (jumpOffset > 4) return; // 점프 중이면(공중에 충분히 떠 있으면) 검사하지 않음
+  if (jumpOffset > 4) return;
 
   const stageWidth = getStageWidth();
   const charCenterX = stageWidth * 0.25;
@@ -793,7 +810,7 @@ function updateHazards(dt) {
   const stageWidth = getStageWidth();
   const charCenterX = stageWidth * 0.25;
   const hazardHitboxMargin = (HAZARD_SIZE - HAZARD_HITBOX_SIZE) / 2;
-  const charHitboxMargin = 6; // 캐릭터 쪽도 살짝 안쪽으로 좁혀서 그레이징 판정 방지
+  const charHitboxMargin = 6;
   const charLeft = charCenterX - CHAR_HITBOX_WIDTH / 2 + charHitboxMargin;
   const charRight = charCenterX + CHAR_HITBOX_WIDTH / 2 - charHitboxMargin;
   const charBottom = groundY + CHAR_GROUND_OFFSET + jumpOffset;
@@ -824,24 +841,26 @@ function updateHazards(dt) {
   });
 }
 
-// ----- 배경 이미지 스크롤 (두 장을 이어붙여 무한 반복) -----
 function updateBgScroll(dt) {
   const stageWidth = getStageWidth();
   const bgLoopWidth = stageWidth * 2;
 
-  bgOffset -= SCROLL_SPEED * 0.35 * dt; // 배경은 근경보다 느리게 (패럴랙스), 속도 배율은 SCROLL_SPEED를 따라감
+  bgOffset -= SCROLL_SPEED * 0.35 * dt;
   if (bgOffset <= -bgLoopWidth) bgOffset += bgLoopWidth;
 
-  bgTile1El.style.width = `${stageWidth}px`;
-  bgTile2El.style.width = `${stageWidth}px`;
-  bgTile3El.style.width = `${stageWidth}px`;
-  bgTile1El.style.left = `${bgOffset}px`;
-  bgTile2El.style.left = `${bgOffset + stageWidth}px`;
-  bgTile3El.style.left = `${bgOffset + bgLoopWidth}px`;
+  // 정수 픽셀로 반올림하여 타일 사이 서브픽셀 이음새(세로선) 방지
+  const o = Math.round(bgOffset);
+  const w = Math.ceil(stageWidth) + 1; // 1px 여유로 틈새 완전 차단
+  bgTile1El.style.width = `${w}px`;
+  bgTile2El.style.width = `${w}px`;
+  bgTile3El.style.width = `${w}px`;
+  bgTile1El.style.left = `${o}px`;
+  bgTile2El.style.left = `${o + Math.ceil(stageWidth)}px`;
+  bgTile3El.style.left = `${o + Math.ceil(stageWidth) * 2}px`;
 }
 
 function resetScrollWorld() {
-  SCROLL_SPEED = SCROLL_SPEED_EARLY; // 재시작 시 속도를 반드시 초반값(300)으로 초기화
+  SCROLL_SPEED = SCROLL_SPEED_EARLY;
   clearItems();
   clearHazards();
   clearScorePopups();
@@ -851,12 +870,20 @@ function resetScrollWorld() {
 }
 
 function jump() {
-  if (gameState !== "playing" || !isOnGround) return;
-  velocityY = JUMP_VELOCITY;
-  isOnGround = false;
-  characterEl.classList.add("airborne");
-  characterVisualEl.src = SPRITES.jump;
-  playJumpSound();
+  if (gameState !== "playing") return;
+  if (jumpCount === 0) {
+    velocityY = JUMP_VELOCITY;
+    jumpCount = 1;
+    isOnGround = false;
+    characterEl.classList.add("airborne");
+    characterVisualEl.src = SPRITES.jump;
+    playJumpSound();
+  } else if (jumpCount === 1) {
+    velocityY = JUMP_VELOCITY * 0.92;
+    jumpCount = 2;
+    characterVisualEl.src = SPRITES.jump;
+    playDoubleJumpSound();
+  }
 }
 
 function physicsLoop(timestamp) {
@@ -874,6 +901,7 @@ function physicsLoop(timestamp) {
   if (jumpOffset <= 0) {
     jumpOffset = 0;
     velocityY = 0;
+    jumpCount = 0;
     if (!isOnGround) {
       isOnGround = true;
       characterEl.classList.remove("airborne");
@@ -999,7 +1027,6 @@ function showResult() {
     badgeEl.className = `result-grade-badge grade-tier-${grade.tier}`;
     badgeEl.style.display = "";
   } else {
-    // 게임오버 시에는 등급을 표시하지 않는다
     badgeEl.style.display = "none";
   }
 
@@ -1027,7 +1054,7 @@ const WIN_SPARKLE_SPOTS = [
 const WIN_SPARKLE_EMOJI = ["✨", "⭐", "🌟", "💫", "🎉"];
 
 function showWinSparkles(finished) {
-  const container = document.getElementById("win-sparkles");
+  const container = document.createElement("div");
   container.innerHTML = "";
   if (!finished) return;
 
@@ -1051,7 +1078,7 @@ btnStart.addEventListener("click", async () => {
   startCountdown();
 });
 
-// ===== 다시 시작 버튼 (중복 클릭 방지) =====
+// ===== 다시 시작 버튼 =====
 btnRestart.addEventListener("click", async () => {
   if (gameState === "countdown" || gameState === "playing") return;
 
@@ -1100,6 +1127,85 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", queueResizeGameToViewport);
   window.visualViewport.addEventListener("scroll", queueResizeGameToViewport);
 }
+
+// ===== 일시정지 및 홈 제어 =====
+function pauseGame() {
+  if (gameState !== "playing") return;
+  gameState = "paused";
+  if (physicsRafId !== null) {
+    cancelAnimationFrame(physicsRafId);
+    physicsRafId = null;
+  }
+  if (gameTimerId !== null) {
+    clearInterval(gameTimerId);
+    gameTimerId = null;
+  }
+  stopBgm();
+  showScreen("pause");
+}
+
+function resumeGame() {
+  if (gameState !== "paused") return;
+  gameState = "playing";
+  showScreen("playing");
+  lastPhysicsTime = null;
+  physicsRafId = requestAnimationFrame(physicsLoop);
+  startBgm();
+
+  gameTimerId = setInterval(() => {
+    timeLeft -= 1;
+    updateHud();
+
+    const elapsed = GAME_DURATION - timeLeft;
+    if (!phase15Shown && elapsed >= 15) {
+      phase15Shown = true;
+      showPhaseAnnounce("☁️", "구름이 빨라지고 있어요!", 42, "#67B8FF");
+    }
+    if (!phase30Shown && elapsed >= 30) {
+      phase30Shown = true;
+      showPhaseAnnounce("🌈", "마지막 꿈길!", 46, "#A47CFF");
+    }
+
+    if (timeLeft <= 0) {
+      finished = true;
+      endGame();
+    }
+  }, 1000);
+}
+
+function goHome() {
+  clearAllTimers();
+  stopBgm();
+  gameState = "ready";
+  resetGameData();
+  showScreen("ready");
+}
+
+document.getElementById("btn-pause-playing").addEventListener("click", (e) => {
+  e.stopPropagation();
+  pauseGame();
+});
+
+document.getElementById("btn-home-playing").addEventListener("click", (e) => {
+  e.stopPropagation();
+  goHome();
+});
+
+document.getElementById("btn-resume").addEventListener("click", () => {
+  resumeGame();
+});
+
+document.getElementById("btn-restart-pause").addEventListener("click", async () => {
+  await unlockAudio();
+  playStartChime();
+  clearAllTimers();
+  resetGameData();
+  startCountdown();
+});
+
+document.getElementById("btn-home-pause").addEventListener("click", () => {
+  goHome();
+});
 
 // ===== 사운드 버튼 (배경음/효과음 전체 on-off) =====
 document.getElementById("btn-sound-ready").addEventListener("click", async () => {
