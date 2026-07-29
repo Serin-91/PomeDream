@@ -151,7 +151,8 @@ const CHOCOLATE_SPAWN_RATE_STAGE_2 = 0.15; // 2단계 (15~30초) 초콜릿 생�
 const CHOCOLATE_SPAWN_RATE_STAGE_3 = 0.32; // 3단계 (30~45초) 초콜릿 생성 확률 (32%)
 const CHOCOLATE_SCORE_PENALTY = 15;   // 초콜릿 충돌 시 점수 감소
 const CHOCOLATE_SIZE = 32;            // 초콜릿 충돌 판정 크기(px)
-const CHOCOLATE_FLY_SPEED_ADD = 180;  // 초콜릿 비행 추가 속도(px/s)
+const CHOCOLATE_FLY_SPEED_ADD = 120;  // 반응 시간을 확보하도록 기본 스크롤보다 120px/s 빠르게 이동
+const CHOCOLATE_COMBO_CHANCE = 0.50;  // 3단계 2연속 초콜릿 확률
 // 다채로운 4가지 비행 높이 (낮음 68px, 중간 112px, 높음 156px, 초고공 198px)
 const CHOCOLATE_HEIGHTS = [68, 112, 156, 198];
 
@@ -635,7 +636,7 @@ function spawnPlatformAt(xStart, opts) {
   const elapsed = GAME_DURATION - timeLeft;
   const isPhase3 = elapsed >= 30;
 
-  // 현재 단계에 따른 초콜릿 스폰 확률 선택 (1단계: 0, 2단계: 15%, 3단계: 30%)
+  // 현재 단계에 따른 초콜릿 스폰 확률 선택 (1단계: 0, 2단계: 15%, 3단계: 32%)
   let chocoSpawnRate = 0;
   if (isPhase3) {
     chocoSpawnRate = CHOCOLATE_SPAWN_RATE_STAGE_3;
@@ -649,23 +650,30 @@ function spawnPlatformAt(xStart, opts) {
   if (chocoSpawnRate > 0 && !opts.suppressHazard && !opts.suppressChocolate) {
     const cooldownOk = (totalTileSpawnCount - lastChocolateSpawnTileIndex) >= 2;
     if (cooldownOk && Math.random() < chocoSpawnRate) {
-      // 1. 4가지 높이 중 랜덤 선택 (2단계: 3가지, 3단계: 4가지 높이)
-      const randomHeightIndex = Math.floor(Math.random() * (isPhase3 ? 4 : 3));
-      const firstHeight = CHOCOLATE_HEIGHTS[randomHeightIndex];
-      const isWave1 = Math.random() < 0.22; // 22% 확률로 둥실거리는 S자 물결 초콜릿
-      spawnChocolate(getStageWidth() + 60, firstHeight, isWave1);
+      const spawnX = getStageWidth() + 60;
+      const makeSafePair = isPhase3 && Math.random() < CHOCOLATE_COMBO_CHANCE;
 
-      // 2. 3단계에서는 60% 확률로 '높이가 서로 다른 변칙 콤보' 2연속 초콜릿 날아옴!
-      if (isPhase3 && Math.random() < 0.60) {
-        let secondHeightIndex = Math.floor(Math.random() * 4);
-        if (secondHeightIndex === randomHeightIndex) {
-          secondHeightIndex = (randomHeightIndex + 1 + Math.floor(Math.random() * 3)) % 4; // 다른 높이 강제
-        }
-        const secondHeight = CHOCOLATE_HEIGHTS[secondHeightIndex];
-        const isWave2 = Math.random() < 0.22;
-        // X축 간격도 160px ~ 270px 사이의 변칙 무작위 간격
-        const gapOffset = 160 + Math.random() * 110;
-        spawnChocolate(getStageWidth() + 60 + gapOffset, secondHeight, isWave2);
+      if (makeSafePair && Math.random() < 0.5) {
+        // 저공 2연속: 같은 높이와 짧은 간격으로 배치해 한 번의 점프로 둘 다 넘는다.
+        const lowHeight = CHOCOLATE_HEIGHTS[0];
+        const gapOffset = 180 + Math.random() * 35;
+        spawnChocolate(spawnX, lowHeight, false);
+        spawnChocolate(spawnX + gapOffset, lowHeight, false);
+      } else if (makeSafePair) {
+        // 고공 2연속: 둘 다 지면에 있으면 통과하도록 낮은 충돌 라인을 사용하지 않는다.
+        const highHeights = CHOCOLATE_HEIGHTS.slice(1);
+        const firstIndex = Math.floor(Math.random() * highHeights.length);
+        let secondIndex = Math.floor(Math.random() * highHeights.length);
+        if (secondIndex === firstIndex) secondIndex = (secondIndex + 1) % highHeights.length;
+        const gapOffset = 220 + Math.random() * 80;
+        spawnChocolate(spawnX, highHeights[firstIndex], Math.random() < 0.22);
+        spawnChocolate(spawnX + gapOffset, highHeights[secondIndex], Math.random() < 0.22);
+      } else {
+        // 단독 패턴: 2단계는 3개, 3단계는 4개 높이 중 선택한다.
+        const randomHeightIndex = Math.floor(Math.random() * (isPhase3 ? 4 : 3));
+        const height = CHOCOLATE_HEIGHTS[randomHeightIndex];
+        const isWave = randomHeightIndex > 0 && Math.random() < 0.22;
+        spawnChocolate(spawnX, height, isWave);
       }
 
       lastChocolateSpawnTileIndex = totalTileSpawnCount;
