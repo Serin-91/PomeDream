@@ -829,6 +829,23 @@ body.show-orientation-hint #orientation-hint {
   transform: translateY(-4px) rotate(-12deg) scale(1.05);
 }
 
+/* 2단 점프 입력 직후 0.1초간 힘을 모으는 시각 연출 */
+#character.airborne.double-jump-prepare #character-visual {
+  animation: double-jump-crouch 0.1s ease-out both;
+}
+
+@keyframes double-jump-crouch {
+  0% {
+    transform: translateY(-4px) rotate(-10deg) scale(1.02);
+  }
+  70% {
+    transform: translateY(28px) rotate(-4deg) scale(0.95);
+  }
+  100% {
+    transform: translateY(34px) rotate(-2deg) scale(0.93);
+  }
+}
+
 #character.invincible #character-visual {
   animation: hurt-blink 0.15s steps(1) infinite;
 }

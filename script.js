@@ -25,6 +25,9 @@ let jumpOffset = 0; // 발판 기준 위로 올라간 거리(px)
 let isOnGround = true;
 let jumpCount = 0; // 0: 지면, 1: 1차 점프, 2: 2차 점프
 let lastPhysicsTime = null;
+const DOUBLE_JUMP_PREPARE_DURATION = 100; // 2단 점프 웅크림 연출 시간(ms)
+let isDoubleJumpPreparing = false;
+let doubleJumpPrepareTimeoutId = null;
 
 // ===== 화면 요소 =====
 const screens = {
@@ -70,6 +73,7 @@ const SPRITES = {
   idle: "images/캐릭터_Idle.png",
   run: "images/캐릭터_Run.png",
   jump: "images/캐릭터_Jump.png",
+  doubleJumpPrepare: "images/캐릭터_Doublejumpcrouch.png",
   hurt: "images/캐릭터_Hurt.png",
   win: "images/result-win-card.png",
   gameover: "images/result-gameover-card.png",
@@ -539,6 +543,12 @@ function clearAllTimers() {
     clearTimeout(invincibleTimeoutId);
     invincibleTimeoutId = null;
   }
+  if (doubleJumpPrepareTimeoutId !== null) {
+    clearTimeout(doubleJumpPrepareTimeoutId);
+    doubleJumpPrepareTimeoutId = null;
+  }
+  isDoubleJumpPreparing = false;
+  characterEl.classList.remove("double-jump-prepare");
 }
 
 const GROUND_Y_SHIFT_DOWN = 60;
@@ -586,7 +596,40 @@ function getCharBaseBottomPx() {
   return getGroundBottomPx() + CHAR_GROUND_OFFSET;
 }
 
+function cancelDoubleJumpPrepare() {
+  if (doubleJumpPrepareTimeoutId !== null) {
+    clearTimeout(doubleJumpPrepareTimeoutId);
+    doubleJumpPrepareTimeoutId = null;
+  }
+  isDoubleJumpPreparing = false;
+  characterEl.classList.remove("double-jump-prepare");
+}
+
+function playDoubleJumpPrepare() {
+  cancelDoubleJumpPrepare();
+  isDoubleJumpPreparing = true;
+  characterEl.classList.add("double-jump-prepare");
+  characterVisualEl.src = SPRITES.doubleJumpPrepare;
+
+  doubleJumpPrepareTimeoutId = setTimeout(() => {
+    doubleJumpPrepareTimeoutId = null;
+    isDoubleJumpPreparing = false;
+    characterEl.classList.remove("double-jump-prepare");
+
+    if (
+      (gameState === "playing" || gameState === "paused") &&
+      jumpCount === 2 &&
+      !isOnGround &&
+      !isInvincible &&
+      !isFalling
+    ) {
+      characterVisualEl.src = SPRITES.jump;
+    }
+  }, DOUBLE_JUMP_PREPARE_DURATION);
+}
+
 function resetCharacterPhysics() {
+  cancelDoubleJumpPrepare();
   jumpOffset = 0;
   velocityY = 0;
   isOnGround = true;
@@ -1120,6 +1163,7 @@ function showComboPopup(x, y) {
 function hitHazard() {
   if (isInvincible || gameState !== "playing") return;
   playHurtSound();
+  cancelDoubleJumpPrepare();
 
   // 먹구름 피격: 하트는 차감하지 않고 점수만 -40점 감점
   score = Math.max(0, score - HAZARD_SCORE_PENALTY);
@@ -1145,6 +1189,7 @@ function fallIntoGap() {
   if (isFalling || gameState !== "playing") return;
   isFalling = true;
   playFallSound();
+  cancelDoubleJumpPrepare();
 
   // 낭떠러지 추락: 회전하며 아래로 푹 고꾸라지는 리얼 낙사 애니메이션
   characterEl.classList.add("falling");
@@ -1250,7 +1295,7 @@ function jump() {
   } else if (jumpCount === 1) {
     velocityY = JUMP_VELOCITY * 0.92;
     jumpCount = 2;
-    characterVisualEl.src = SPRITES.jump;
+    playDoubleJumpPrepare();
     playDoubleJumpSound();
   }
 }
