@@ -1,0 +1,1198 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: "Gamja Flower", "Gaegu", "Apple SD Gothic Neo", sans-serif;
+  font-weight: 700;
+  background: #0b0620;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+#game-shell {
+  position: relative;
+  width: 960px;
+  height: 540px;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+#game-container {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 960px;
+  height: 540px;
+  flex: 0 0 auto;
+  transform-origin: top left;
+  overflow: hidden;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #cdb4f0 0%, #f6c9e0 50%, #ffe3ef 100%);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  border: 6px solid #fff;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#orientation-hint {
+  position: fixed;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  display: none;
+  width: min(92vw, 390px);
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #7b3fb2;
+  font-family: "Jua", sans-serif;
+  font-size: 16px;
+  letter-spacing: 0;
+  text-align: center;
+  border: 2px solid rgba(255, 167, 211, 0.95);
+  box-shadow: 0 5px 16px rgba(78, 35, 120, 0.28);
+  pointer-events: none;
+  z-index: 20;
+}
+
+body.show-orientation-hint #orientation-hint {
+  display: block;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: #4a3560;
+}
+
+.screen.hidden {
+  display: none;
+}
+
+/* ===== 공용 배경 장식 ===== */
+.sky-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.deco-moon {
+  position: absolute;
+  top: 28px;
+  left: 40px;
+  font-size: 46px;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.7));
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.deco-rainbow {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  font-size: 54px;
+  opacity: 0.9;
+  animation: float-slow 7s ease-in-out infinite;
+}
+
+.deco-star {
+  position: absolute;
+  color: #fff;
+  text-shadow: 0 0 6px rgba(255,255,255,0.8);
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+
+.s1 { top: 60px; left: 220px; font-size: 20px; animation-delay: 0s; }
+.s2 { top: 130px; left: 760px; font-size: 26px; animation-delay: 0.6s; }
+.s3 { top: 40px; left: 500px; font-size: 16px; animation-delay: 1.1s; }
+.s4 { top: 190px; left: 100px; font-size: 18px; animation-delay: 1.6s; }
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* ===== 시작 화면 ===== */
+.ready-card {
+  position: relative;
+  z-index: 2;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(2px);
+  border: 3px solid #fff;
+  border-radius: 28px;
+  padding: 14px 28px 16px;
+  box-shadow: 0 12px 24px rgba(120, 70, 150, 0.18);
+  max-height: 96%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.title-dog {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+  animation: bounce-dog 1.6s ease-in-out infinite;
+}
+
+@keyframes bounce-dog {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(8deg); }
+}
+
+.title {
+  font-family: "Jua", "Gaegu", sans-serif;
+  font-size: clamp(20px, 3.8vw, 30px);
+  margin: 0;
+  color: #8a4fbf;
+  text-shadow: 0 3px 0 #fff, 0 5px 10px rgba(138, 79, 191, 0.3);
+  letter-spacing: 0;
+  word-break: keep-all;
+  white-space: nowrap;
+}
+
+.subtitle {
+  margin: 0 0 10px;
+  line-height: 1.35;
+  font-size: 16px;
+  color: #5c3a7a;
+}
+
+.howto {
+  background: rgba(255,255,255,0.85);
+  border: 2px dashed #e3b8f0;
+  border-radius: 18px;
+  padding: 10px 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  width: 100%;
+  max-width: 410px;
+}
+
+.howto h2 {
+  font-family: "Jua", sans-serif;
+  margin: 0 0 4px;
+  font-size: 18px;
+  color: #a15fc9;
+}
+
+.howto-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 15px;
+  margin-bottom: 5px;
+}
+
+.key-or {
+  font-size: 13px;
+  color: #9a7ab0;
+}
+
+.howto-desc {
+  font-family: "Jua", sans-serif;
+  color: #ff6fb0;
+  font-size: 17px;
+  margin-left: 2px;
+  white-space: nowrap;
+}
+
+.howto-sub {
+  margin: 6px 0 0;
+  font-family: "Jua", "Gaegu", sans-serif;
+  font-size: 17px;
+  line-height: 1.3;
+  color: #5c3a7a;
+  white-space: nowrap;
+}
+
+.score-guide {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr);
+  gap: 4px;
+  margin: 6px auto 5px;
+  max-width: 350px;
+  font-size: 16px;
+  line-height: 1.2;
+  color: #5c3a7a;
+}
+
+.score-guide div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.62);
+  white-space: nowrap;
+}
+
+.score-guide div span {
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.score-guide strong {
+  font-family: "Jua", sans-serif;
+  font-size: 17px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.score-plus {
+  color: #20b85a;
+}
+
+.score-minus {
+  color: #e44343;
+}
+
+.key {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid #d7bdf0;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-weight: bold;
+  font-family: "Jua", sans-serif;
+  box-shadow: 0 3px 0 #d7bdf0;
+}
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: "Jua", sans-serif;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #ffb0d9, #ff6fb0);
+  color: #fff;
+  font-size: 20px;
+  padding: 14px 44px;
+  box-shadow: 0 5px 0 #d9478c;
+  transition: transform 0.1s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+}
+
+.btn-primary:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #d9478c;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: linear-gradient(180deg, #e4d0f8, #ca9ef0);
+  color: #5c3a7a;
+  font-size: 20px;
+  padding: 13px 40px;
+  box-shadow: 0 5px 0 #a272cb;
+  transition: transform 0.1s;
+}
+
+.btn-secondary:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(180deg, #ebd8fc, #cfa5f5);
+}
+
+.btn-secondary:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #a272cb;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-round {
+  width: 46px;
+  height: 46px;
+  font-size: 19px;
+  background: #fff;
+  box-shadow: 0 3px 0 #ddd;
+  margin-top: 16px;
+}
+
+/* ===== 카운트다운 ===== */
+#screen-countdown {
+  background: rgba(0,0,0,0.25);
+}
+
+#countdown-number {
+  font-family: "Jua", sans-serif;
+  font-size: 96px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* ===== 게임 화면 ===== */
+#screen-playing {
+  justify-content: flex-start;
+  padding: 0;
+}
+
+#hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.hud-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.hud-card {
+  background: rgba(255,255,255,0.85);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 16px;
+  font-weight: bold;
+  font-family: "Jua", sans-serif;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.08);
+}
+
+.hud-btn-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.hud-btn-group .btn-round {
+  width: 50px;
+  height: 50px;
+  font-size: 21px;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.12);
+  transition: transform 0.1s;
+}
+
+.hud-btn-group .btn-round:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.12);
+}
+
+#stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* 배경 이미지 스크롤 (이음새 없이 이어 붙여 흘러가는 배경) */
+#bg-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg-tile {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background-image: url("images/배경이미지.png");
+  background-size: cover;
+  background-position: center center;
+  image-rendering: auto;
+  /* 서브픽셀 렌더링으로 인한 이음새 방지 */
+  margin-right: -1px;
+}
+
+.bg-tile-mirror {
+  transform: scaleX(-1);
+  margin-right: 0;
+  margin-left: -1px;
+}
+
+/* 발판 (구름 발판) */
+#platforms {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.platform {
+  position: absolute;
+  height: 42px;
+  bottom: 0;
+  border-radius: 50px;
+  background: linear-gradient(180deg, #ffffff, #f0e4fb);
+  box-shadow: 0 8px 0 rgba(180, 150, 210, 0.35), inset 0 -6px 8px rgba(200, 170, 230, 0.35);
+}
+
+.platform::before,
+.platform::after {
+  content: "";
+  position: absolute;
+  background: linear-gradient(180deg, #ffffff, #f6ecff);
+  border-radius: 50%;
+  box-shadow: inset 0 -4px 8px rgba(200, 170, 230, 0.25);
+}
+
+.platform::before {
+  width: 52%;
+  height: 190%;
+  top: -100%;
+  left: 6%;
+}
+
+.platform::after {
+  width: 40%;
+  height: 150%;
+  top: -78%;
+  right: 10%;
+}
+
+.platform-bump-extra {
+  content: "";
+  position: absolute;
+  background: linear-gradient(180deg, #ffffff, #f6ecff);
+  border-radius: 50%;
+  box-shadow: inset 0 -4px 8px rgba(200, 170, 230, 0.25);
+  width: 32%;
+  height: 120%;
+  top: -55%;
+  left: 34%;
+}
+
+/* 간식 아이템 */
+#items {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+#score-popups {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.score-popup {
+  position: absolute;
+  transform: translate(-50%, 0);
+  font-family: "Jua", sans-serif;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-shadow: 0 2px 0 rgba(255,255,255,0.95), 0 3px 8px rgba(70, 40, 90, 0.18);
+  animation: score-popup-rise 0.75s ease-out forwards;
+  white-space: nowrap;
+}
+
+.score-popup.plus {
+  color: #20b85a;
+}
+
+.score-popup.minus {
+  color: #e44343;
+  animation-name: score-popup-drop;
+}
+
+/* ===== 콤보 전용 팝업 ===== */
+.score-popup.combo {
+  background: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: combo-rise 1.0s ease-out forwards;
+  z-index: 15;
+  white-space: nowrap;
+}
+
+.combo-label {
+  font-family: "Jua", sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  background: linear-gradient(180deg, #ffe040 0%, #ff8c00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 1px 3px rgba(255, 140, 0, 0.55));
+  letter-spacing: 0.5px;
+}
+
+/* 양옆 점 그룹 */
+.combo-dots {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+}
+
+.combo-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: block;
+  opacity: 0;
+}
+
+/* 왼쪽 점: 왼쪽으로 퍼짐 */
+.combo-dots.left span:nth-child(1) { background: #ffe040; animation: dot-spread-left-up   0.9s ease-out forwards 0.05s; }
+.combo-dots.left span:nth-child(2) { background: #ffaa00; animation: dot-spread-left-mid  0.9s ease-out forwards 0.0s;  }
+.combo-dots.left span:nth-child(3) { background: #ff8c00; animation: dot-spread-left-down 0.9s ease-out forwards 0.05s; }
+
+/* 오른쪽 점: 오른쪽으로 퍼짐 */
+.combo-dots.right span:nth-child(1) { background: #ffe040; animation: dot-spread-right-up   0.9s ease-out forwards 0.05s; }
+.combo-dots.right span:nth-child(2) { background: #ffaa00; animation: dot-spread-right-mid  0.9s ease-out forwards 0.0s;  }
+.combo-dots.right span:nth-child(3) { background: #ff8c00; animation: dot-spread-right-down 0.9s ease-out forwards 0.05s; }
+
+@keyframes dot-spread-left-up   { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(-11px,-9px)} }
+@keyframes dot-spread-left-mid  { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(-13px,0px)} }
+@keyframes dot-spread-left-down { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(-11px,9px)} }
+
+@keyframes dot-spread-right-up   { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(11px,-9px)} }
+@keyframes dot-spread-right-mid  { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(13px,0px)} }
+@keyframes dot-spread-right-down { 0%{opacity:0;transform:translate(0,0)} 25%{opacity:1} 100%{opacity:0;transform:translate(11px,9px)} }
+
+@keyframes combo-rise {
+  0%   { opacity: 0; transform: translate(-50%, 0px)  scale(0.85); }
+  18%  { opacity: 1; transform: translate(-50%, -10px) scale(1.08); }
+  60%  { opacity: 1; transform: translate(-50%, -26px) scale(1.0); }
+  100% { opacity: 0; transform: translate(-50%, -48px) scale(0.95); }
+}
+
+.item {
+  position: absolute;
+  font-size: 44px;
+  filter: drop-shadow(0 2px 3px rgba(150, 110, 180, 0.3));
+  animation: item-float 1s ease-in-out infinite;
+}
+
+.item.collected {
+  animation: none;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  transform: scale(1.8) translateY(-20px);
+  opacity: 0;
+}
+
+.item-golden {
+  font-size: 46px;
+  filter: sepia(1) saturate(4) hue-rotate(-10deg) brightness(1.15)
+    drop-shadow(0 0 8px rgba(255, 210, 90, 0.95)) drop-shadow(0 2px 3px rgba(150, 110, 180, 0.3));
+  animation: golden-float 0.7s ease-in-out infinite;
+}
+
+/* HUD/결과 화면에서도 실제 게임 속 황금 뼈다귀와 같은 금빛 느낌으로 표시 */
+.golden-icon {
+  display: inline-block;
+  filter: sepia(1) saturate(4) hue-rotate(-10deg) brightness(1.15)
+    drop-shadow(0 0 4px rgba(255, 210, 90, 0.9));
+}
+
+@keyframes item-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes golden-float {
+  0%, 100% { transform: translateY(0) scale(1) rotate(-6deg); }
+  50% { transform: translateY(-9px) scale(1.12) rotate(6deg); }
+}
+
+@keyframes score-popup-rise {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.8); }
+  18% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -34px) scale(1.06); }
+}
+
+@keyframes score-popup-drop {
+  0% { opacity: 0; transform: translate(-50%, -4px) scale(0.8); }
+  18% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, 30px) scale(1.04); }
+}
+
+/* 위험 요소 (비 내리는 회색 먹구름) */
+#hazards {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.hazard {
+  position: absolute;
+  width: 52px;
+  height: 48px;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(30, 40, 60, 0.4));
+  animation: hazard-float 1.2s ease-in-out infinite;
+}
+
+.hazard-cloud {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.cloud-body {
+  position: relative;
+  width: 48px;
+  height: 22px;
+  background: linear-gradient(180deg, #5c6475 0%, #384050 100%);
+  border-radius: 20px;
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.25);
+}
+
+.cloud-body::before,
+.cloud-body::after {
+  content: "";
+  position: absolute;
+  background: linear-gradient(180deg, #626c7e 0%, #3e4657 100%);
+  border-radius: 50%;
+}
+
+.cloud-body::before {
+  width: 25px;
+  height: 25px;
+  top: -12px;
+  left: 6px;
+}
+
+.cloud-body::after {
+  width: 20px;
+  height: 20px;
+  top: -8px;
+  right: 7px;
+}
+
+.rain-container {
+  position: absolute;
+  top: 20px;
+  left: 4px;
+  width: 40px;
+  height: 24px;
+  overflow: hidden;
+}
+
+.rain-drop {
+  position: absolute;
+  width: 2px;
+  height: 9px;
+  background: linear-gradient(180deg, rgba(140,210,255,0.95), rgba(70,120,240,0.7));
+  border-radius: 2px;
+  animation: rain-fall 0.42s linear infinite;
+}
+
+.rain-drop.d1 { left: 8px; animation-delay: 0s; }
+.rain-drop.d2 { left: 20px; animation-delay: 0.14s; }
+.rain-drop.d3 { left: 32px; animation-delay: 0.28s; }
+
+.lightning-flash {
+  position: absolute;
+  top: 10px;
+  left: 17px;
+  font-size: 13px;
+  color: #ffe600;
+  text-shadow: 0 0 6px #ffea00;
+  animation: bolt-flash 0.9s ease-in-out infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@keyframes rain-fall {
+  0% { transform: translateY(-8px); opacity: 1; }
+  100% { transform: translateY(24px); opacity: 0.15; }
+}
+
+@keyframes bolt-flash {
+  0%, 75%, 100% { opacity: 0; transform: scale(0.8); }
+  80%, 92% { opacity: 1; transform: scale(1.25) rotate(-10deg); }
+}
+
+@keyframes hazard-float {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-4px) rotate(3deg); }
+}
+
+/* 난이도 구간 전환 안내 문구 (15초/30초 시점에 잠깐 표시) */
+#phase-announce {
+  position: absolute;
+  top: 22%; /* 상단 UI 아래, 화면 중앙에서 위쪽으로 이동해 플레이 방해하지 않도록 */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Jua", "Gaegu", sans-serif;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  paint-order: stroke fill;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+}
+
+#phase-announce.show {
+  animation: phase-announce-fade 1.5s ease forwards;
+}
+
+@keyframes phase-announce-fade {
+  0% { opacity: 0; }
+  13% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 캐릭터를 화면 중간쯤에 배치 */
+#character {
+  z-index: 2;
+  position: absolute;
+  left: 25%;
+  bottom: 52%;
+  transform: translateX(-50%);
+}
+
+#character-visual {
+  display: block;
+  width: 150px;
+  height: auto;
+  transform: translateY(0);
+  filter: drop-shadow(0 6px 6px rgba(0,0,0,0.15));
+  animation: run-bob 0.4s ease-in-out infinite;
+}
+
+#character.airborne #character-visual {
+  animation: none;
+  transform: translateY(-4px) rotate(-12deg) scale(1.05);
+}
+
+/* 2단 점프 입력 직후 0.1초간 힘을 모으는 시각 연출 */
+#character.airborne.double-jump-prepare #character-visual {
+  animation: double-jump-crouch 0.1s ease-out both;
+}
+
+@keyframes double-jump-crouch {
+  0% {
+    transform: translateY(-4px) rotate(-10deg) scale(1.02);
+  }
+  70% {
+    transform: translateY(28px) rotate(-4deg) scale(0.95);
+  }
+  100% {
+    transform: translateY(34px) rotate(-2deg) scale(0.93);
+  }
+}
+
+#character.invincible #character-visual {
+  animation: hurt-blink 0.15s steps(1) infinite;
+}
+
+#character.falling #character-visual {
+  animation: fall-spin-drop 0.55s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards !important;
+}
+
+@keyframes fall-spin-drop {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(20px) rotate(-35deg) scale(1.08);
+  }
+  100% {
+    transform: translateY(320px) rotate(240deg) scale(0.55);
+    opacity: 0.1;
+  }
+}
+
+@keyframes run-bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-6px) rotate(3deg); }
+}
+
+@keyframes hurt-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* ===== 일시정지 화면 ===== */
+#screen-pause {
+  background: rgba(15, 10, 30, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 20;
+}
+
+.pause-card {
+  position: relative;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  border: 3px solid #fff;
+  border-radius: 28px;
+  padding: 30px 36px 34px;
+  box-shadow: 0 14px 32px rgba(90, 40, 130, 0.3);
+  width: 380px;
+  max-width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: pause-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes pause-pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.pause-title {
+  font-family: "Jua", sans-serif;
+  font-size: 36px;
+  color: #8a4fbf;
+  margin: 0 0 6px 0;
+  text-shadow: 0 2px 0 #fff, 0 4px 10px rgba(138, 79, 191, 0.25);
+  letter-spacing: -0.5px;
+}
+
+.pause-desc {
+  font-family: "Jua", "Gaegu", sans-serif;
+  font-size: 24px;
+  color: #5c3a7a;
+  margin: 0 0 24px 0;
+  line-height: 1.3;
+}
+
+.pause-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  align-items: center;
+}
+
+.pause-btn-group .btn {
+  width: 100%;
+  max-width: 250px;
+  font-size: 21px;
+  padding: 13px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* ===== 결과 화면 ===== */
+.result-card {
+  position: relative;
+  z-index: 2;
+  background: rgba(255,255,255,0.85);
+  border: 3px solid #fff;
+  border-radius: 28px;
+  padding: 22px 36px 28px;
+  box-shadow: 0 14px 28px rgba(120, 70, 150, 0.22);
+  width: 420px;
+  max-width: 90%;
+}
+
+.result-btn-group {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.result-btn-group .btn {
+  flex: 1;
+  padding: 12px 14px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.result-card.win-flair::before {
+  content: "";
+  position: absolute;
+  inset: -24px;
+  border-radius: 36px;
+  background: radial-gradient(circle, rgba(255, 235, 150, 0.85), transparent 70%);
+  z-index: -1;
+  animation: win-flash 0.7s ease-out forwards;
+}
+
+@keyframes win-flash {
+  0% { opacity: 0; transform: scale(0.6); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.35); }
+}
+
+.result-card.win-flair #result-char-img {
+  animation: pop-in-win 0.6s ease;
+}
+
+@keyframes pop-in-win {
+  0% { transform: scale(0.4) rotate(0deg); opacity: 0; }
+  60% { transform: scale(1.18) rotate(-8deg); }
+  80% { transform: scale(0.96) rotate(4deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+#result-char-img {
+  display: block;
+  width: auto;
+  max-width: min(240px, 74%);
+  max-height: 150px;
+  height: auto;
+  object-fit: contain;
+  margin: -8px auto 2px;
+  animation: pop-in 0.5s ease both;
+}
+
+@keyframes pop-in {
+  0% { transform: scale(0.4); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* 완주 연출: 반짝이 */
+#win-sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.win-sparkle {
+  position: absolute;
+  font-size: 22px;
+  opacity: 0;
+  animation: sparkle-pop 0.9s ease forwards;
+}
+
+@keyframes sparkle-pop {
+  0% { transform: scale(0.2) rotate(0deg); opacity: 0; }
+  40% { transform: scale(1.2) rotate(20deg); opacity: 1; }
+  100% { transform: scale(0.8) rotate(40deg) translateY(-14px); opacity: 0; }
+}
+
+#result-title {
+  font-family: "Jua", sans-serif;
+  color: #8a4fbf;
+  margin: 0 0 12px;
+  font-size: 26px;
+}
+
+.result-grade-badge {
+  display: inline-block;
+  font-family: "Jua", sans-serif;
+  border-radius: 999px;
+  padding: 6px 22px;
+  font-size: 16px;
+  margin-bottom: 18px;
+  position: relative;
+}
+
+/* 등급 0: 꿈길 초보 - 가장 수수한 배지, 효과 없음 */
+.grade-tier-0 {
+  background: linear-gradient(180deg, #f2eef8, #e3d8ef);
+  color: #8a7a9e;
+  box-shadow: 0 3px 0 #d0c2e0;
+}
+
+/* 등급 1: 구름 산책가 - 수수한 파스텔 배지, 효과 없음 */
+.grade-tier-1 {
+  background: linear-gradient(180deg, #e6ddf5, #d3c4ea);
+  color: #6a5a86;
+  box-shadow: 0 3px 0 #b8a8d6;
+}
+
+/* 등급 2: 구름 간식 탐험가 - 민트톤 + 살짝 반짝임 */
+.grade-tier-2 {
+  background: linear-gradient(180deg, #b8f2df, #7fe0c2);
+  color: #1f6e54;
+  box-shadow: 0 3px 0 #4bbfa0;
+  animation: badge-pop 0.5s ease;
+}
+
+/* 등급 3: 별빛 간식왕 - 보라/핑크 그라디언트 + 은은한 글로우 펄스 */
+.grade-tier-3 {
+  background: linear-gradient(135deg, #d6a8ff, #ff9fdb);
+  color: #5a2a7a;
+  box-shadow: 0 3px 0 #b168d9, 0 0 18px rgba(214, 168, 255, 0.8);
+  animation: badge-pop 0.5s ease, glow-pulse 1.6s ease-in-out infinite;
+}
+
+/* 등급 4: 전설의 솜뭉치 - 금빛 무지개 + 강한 펄스 + 반짝이 회전 */
+.grade-tier-4 {
+  background: linear-gradient(120deg, #ffe27a, #ff9fdb, #a8d6ff, #ffe27a);
+  background-size: 300% 300%;
+  color: #7a3c00;
+  font-size: 18px;
+  padding: 8px 28px;
+  box-shadow: 0 4px 0 #d9a520, 0 0 26px rgba(255, 210, 100, 0.9);
+  animation: badge-pop 0.5s ease, rainbow-shift 2.5s linear infinite, glow-pulse-strong 1.2s ease-in-out infinite;
+}
+
+@keyframes badge-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 3px 0 #b168d9, 0 0 12px rgba(214, 168, 255, 0.6); }
+  50% { box-shadow: 0 3px 0 #b168d9, 0 0 26px rgba(214, 168, 255, 1); }
+}
+
+@keyframes glow-pulse-strong {
+  0%, 100% { box-shadow: 0 4px 0 #d9a520, 0 0 16px rgba(255, 210, 100, 0.7); }
+  50% { box-shadow: 0 4px 0 #d9a520, 0 0 36px rgba(255, 210, 100, 1); }
+}
+
+@keyframes rainbow-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto 22px;
+}
+
+.result-item {
+  background: rgba(255, 235, 245, 0.7);
+  border-radius: 16px;
+  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-icon {
+  font-size: 22px;
+}
+
+.result-label {
+  font-size: 16px;
+  color: #6a4a86;
+  margin-top: 2px;
+}
+
+.result-value {
+  font-family: "Jua", sans-serif;
+  font-size: 18px;
+  color: #7b4ea3;
+  margin-top: 2px;
+}
+
+
+.result-sad #result-title {
+  color: #6a5a86;
+}
+
+/* ===== 작은 별 (점프 궤적) ===== */
+.mini-star {
+  position: absolute;
+  font-size: 26px;
+  filter: drop-shadow(0 2px 3px rgba(150, 110, 180, 0.35));
+  animation: item-float 1s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.mini-star.collected {
+  animation: none;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  transform: scale(1.6) translateY(-16px);
+  opacity: 0;
+}
+
+/* ===== 초콜릿 장애물 (3단계 전용) ===== */
+.chocolate {
+  position: absolute;
+  font-size: 28px;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgba(80, 30, 10, 0.5));
+  animation: choco-wobble 0.5s ease-in-out infinite;
+  z-index: 2;
+}
+
+.choco-wobble {
+  animation: choco-wobble 0.5s ease-in-out infinite;
+}
+
+@keyframes choco-wobble {
+  0%, 100% { transform: rotate(-8deg) scale(1); }
+  50% { transform: rotate(8deg) scale(1.05); }
+}
